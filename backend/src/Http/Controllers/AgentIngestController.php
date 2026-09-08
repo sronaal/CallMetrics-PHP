@@ -121,6 +121,23 @@ class AgentIngestController extends Controller
                 continue;
             }
 
+            // Validar integridad de datos
+            $validacion = $this->validarCdr($cdr, $i);
+            if ($validacion !== true) {
+                $errors[] = $validacion;
+                continue;
+            }
+
+            // Sanitizar grabacion_url para prevenir XSS almacenado
+            if (!empty($cdr['grabacion_url'])) {
+                $cdr['grabacion_url'] = filter_var($cdr['grabacion_url'], FILTER_SANITIZE_URL);
+                // Validar que sea URL absoluta válida
+                if (!filter_var($cdr['grabacion_url'], FILTER_VALIDATE_URL)) {
+                    $errors[] = "Registro $i: URL de grabación inválida";
+                    continue;
+                }
+            }
+
             try {
                 $db->insert(
                     "INSERT INTO llamadas_cdr (
@@ -280,6 +297,52 @@ class AgentIngestController extends Controller
         }
 
         return $pbx;
+    }
+
+    /**
+     * Validar integridad de un registro CDR.
+     * Retorna true si es válido, o string con mensaje de error.
+     */
+    private function validarCdr(array $cdr, int $index): bool|string
+    {
+        // Validar que duracion sea numérico y no negativo
+        if (isset($cdr['duracion']) && (!is_numeric($cdr['duracion']) || $cdr['duracion'] < 0)) {
+            return "Registro $index: duracion debe ser numérico y >= 0";
+        }
+
+        // Validar que billable_seconds sea numérico y no negativo
+        if (isset($cdr['billable_seconds']) && (!is_numeric($cdr['billable_seconds']) || $cdr['billable_seconds'] < 0)) {
+            return "Registro $index: billable_seconds debe ser numérico y >= 0";
+        }
+
+        // Validar coherencia de fechas: fin_llamada >= inicio_llamada
+        if (!empty($cdr['fin_llamada']) && !empty($cdr['inicio_llamada'])) {
+            try {
+                $inicio = new \DateTime($cdr['inicio_llamada']);
+                $fin = new \DateTime($cdr['fin_llamada']);
+                if ($fin < $inicio) {
+                    return "Registro $index: fin_llamada no puede ser anterior a inicio_llamada";
+                }
+            } catch (\Exception $e) {
+                return "Registro $index: formato de fecha inválido";
+            }
+        }
+
+        // Validar estado contra valores permitidos de Asterisk
+        $estadosValidos = ['ANSWERED', 'BUSY', 'NO ANSWER', 'FAILED', 'CANCEL', 'CONGESTION', 'CHANUNAVAIL'];
+        if (!empty($cdr['estado']) && !in_array(strtoupper($cdr['estado']), $estadosValidos)) {
+            return "Registro $index: estado '" . htmlspecialchars($cdr['estado'], ENT_QUOTES) . "' no es válido";
+        }
+
+        // Validar formato básico de callid (Asterisk usa formato específico)
+        if (!empty($cdr['callid'])) {
+            // CallID típico: uniqueid.ocean o similar - al menos evitar caracteres peligrosos
+            if (preg_match('/[<>"\';]/', $cdr['callid'])) {
+                return "Registro $index: callid contiene caracteres inválidos";
+            }
+        }
+
+        return true;
     }
 
     /**

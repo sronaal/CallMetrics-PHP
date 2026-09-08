@@ -1,35 +1,46 @@
-# Dependencias
-vendor/
+# Compiled and build artifacts
+*.pyc
+__pycache__/
+*.o
+*.obj
+*.class
+*.exe
+*.dll
+*.so
+*.a
+*.out
+
+# Dependencies
 node_modules/
+venv/
+.venv/
+.env
+.env.local
+.env.*
 
-# Sesiones PHP
-sessions/
-
-# Logs
+# Logs and temp files
 *.log
-/logs/
-
-# Archivos de sistema
-.DS_Store
-Thumbs.db
-
-# IDEs
-.vscode/
-.idea/
+*.tmp
 *.swp
 *.swo
 
-# Env / secrets
-.env
-.env.*
-!.env.example
+# Editors
+.vscode/
+.idea/
 
-# PHP built-in server
-.php_server.pid
+# Coverage
+coverage/
+htmlcov/
+.coverage
 
-# Temp
-/tmp/
-*.tmp
+# System files
+.DS_Store
+Thumbs.db
 
-# Composer lock (optional — uncomment if you want to track it)
-# composer.lock
+# Build systems
+dist/
+build/
+target/
+.gradle/
+.mypy_cache/
+.pytest_cache/

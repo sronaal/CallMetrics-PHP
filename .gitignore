@@ -1,0 +1,35 @@
+# Dependencias
+vendor/
+node_modules/
+
+# Sesiones PHP
+sessions/
+
+# Logs
+*.log
+/logs/
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# PHP built-in server
+.php_server.pid
+
+# Temp
+/tmp/
+*.tmp
+
+# Composer lock (optional — uncomment if you want to track it)
+# composer.lock

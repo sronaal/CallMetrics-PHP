@@ -1,0 +1,102 @@
+/* ============================================================
+   callcenter.css — estilos del módulo Call Center (L3).
+   Dark, reutiliza theme.css / dashboard.css / pages.css.
+   Cubre: fila de KPIs, QueueCard (cm_rendqueue_card), tabs CDR.
+   ============================================================ */
+
+/* ---- Fila de KPIs (Dashboard CC) ---- */
+.cm-kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+.cm-kpi-row .cm-stat-card {
+    min-height: 92px;
+}
+@media (max-width: 1199.98px) {
+    .cm-kpi-row { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 575.98px) {
+    .cm-kpi-row { grid-template-columns: 1fr; }
+}
+
+/* ---- QueueCard ---- */
+.cm-queue-card {
+    padding: 1rem 1.1rem;
+    transition: border-color .15s ease;
+}
+.cm-queue-card:hover { border-color: rgba(99,102,241,0.45); }
+.cm-queue-card-name {
+    font-weight: 600;
+    font-size: .95rem;
+    color: var(--color-text-primary, #e2e8f0);
+}
+.cm-queue-card-body { gap: 1rem !important; }
+.cm-queue-metric {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+.cm-queue-metric-label {
+    font-size: .7rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--color-text-muted, #94a3b8);
+}
+.cm-queue-metric-value {
+    font-size: 1.05rem;
+    font-weight: 600;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    color: var(--color-text-primary, #e2e8f0);
+}
+.cm-sla-ok   { color: #4ade80 !important; }
+.cm-sla-warn { color: #fbbf24 !important; }
+.cm-sla-bad  { color: #f87171 !important; }
+
+/* ---- Grid de colas (página Colas) ---- */
+.cm-queue-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+@media (max-width: 1199.98px) { .cm-queue-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 575.98px)   { .cm-queue-grid { grid-template-columns: 1fr; } }
+
+/* ---- Tabs CDR ---- */
+.cm-tabs {
+    display: flex;
+    gap: .25rem;
+    border-bottom: 1px solid var(--color-border, #1e293b);
+    padding: 0 1rem;
+}
+.cm-tab {
+    padding: .6rem 1rem;
+    font-size: .875rem;
+    color: var(--color-text-secondary, #94a3b8);
+    border: none;
+    border-bottom: 2px solid transparent;
+    background: none;
+    cursor: pointer;
+    transition: color .15s ease, border-color .15s ease;
+}
+.cm-tab:hover { color: var(--color-text-primary, #e2e8f0); }
+.cm-tab.active {
+    color: var(--color-accent, #8b5cf6);
+    border-bottom-color: var(--color-accent, #8b5cf6);
+}
+
+/* ---- Filtros CDR (fechas) ---- */
+.cm-cdr-filters { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+.cm-cdr-filters label {
+    font-size: .75rem;
+    color: var(--color-text-muted, #94a3b8);
+}
+.cm-cdr-filters input[type="date"] { min-width: 150px; }
+
+/* ---- Barra SLA (tab colas CDR) ---- */
+.cm-sla-bar { flex: 1; height: 6px; border-radius: 9999px; background: #0f172a; overflow: hidden; min-width: 60px; }
+.cm-sla-bar-fill { height: 100%; border-radius: 9999px; }
+.cm-sla-bar-fill.ok   { background: #4ade80; }
+.cm-sla-bar-fill.warn { background: #fbbf24; }
+.cm-sla-bar-fill.bad  { background: #f87171; }

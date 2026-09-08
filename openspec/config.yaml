@@ -1,0 +1,40 @@
+schema: spec-driven
+
+context: |
+  Stack: PHP 8.3.6 vanilla (no framework), MySQL 8, firebase/php-jwt, vlucas/phpdotenv
+  Architecture: Front Controller + MVC-lite, multi-tenant (tenant_id column), JWT auth
+  Environment: LAMPP (Apache + MySQL on localhost)
+  Persistence: hybrid (Engram + openspec)
+  Frontend: /frontend (PHP procedural, Bootstrap 5.3.3 dark theme, mock data)
+  Backend: /backend (new from scratch, no code yet)
+  Reference: BACKEND_PHP_PLAN.md (complete 6-phase implementation plan, ~12h total)
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+    - Reference BACKEND_PHP_PLAN.md phases for sequencing
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+    - Cover multi-tenant isolation in every CRUD spec
+  design:
+    - Include sequence diagrams for auth flows (JWT, refresh rotation)
+    - Document tenant isolation architecture decisions
+    - Prefer simple patterns: singleton, static methods, minimal abstraction
+  tasks:
+    - Group by phase (0-5 from BACKEND_PHP_PLAN.md)
+    - Keep tasks completable in one session
+    - Each phase produces independently testable deliverable
+  apply:
+    guidelines:
+      - Follow PSR-4 autoloading under CallMetrics\ namespace
+      - Use declare(strict_types=1) in every file
+      - Follow existing code patterns from BACKEND_PHP_PLAN.md
+    tdd: false
+    test_command: ""
+  verify:
+    test_command: ""
+    build_command: ""
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas

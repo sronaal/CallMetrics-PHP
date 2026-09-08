@@ -1,0 +1,6 @@
+# Local agent cache
+.atl/
+
+# OS
+.DS_Store
+Thumbs.db

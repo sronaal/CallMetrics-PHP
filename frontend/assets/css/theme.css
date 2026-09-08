@@ -1,0 +1,220 @@
+/* ============================================================
+   theme.css — CallMetric Pro dark design system (shared)
+   ============================================================ */
+
+/* Bootstrap dark overrides */
+[data-bs-theme="dark"] {
+    --bs-body-bg: #0b0f1a;
+    --bs-body-color: #e2e8f0;
+    --bs-primary: #3b82f6;
+    --bs-border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-bs-theme="dark"] .dropdown-menu {
+    background-color: #1a2236;
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+}
+
+[data-bs-theme="dark"] .dropdown-menu .dropdown-item {
+    color: #cbd5e1;
+}
+
+[data-bs-theme="dark"] .dropdown-menu .dropdown-item:hover,
+[data-bs-theme="dark"] .dropdown-menu .dropdown-item:focus,
+[data-bs-theme="dark"] .dropdown-menu .dropdown-item.active {
+    background-color: rgba(59, 130, 246, 0.12);
+    color: #e2e8f0;
+}
+
+/* Base */
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #0b0f1a;
+    color: #e2e8f0;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+}
+
+.font-display {
+    font-family: 'Outfit', 'Inter', sans-serif;
+}
+
+.font-mono {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* Subtle dark scrollbars */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    scrollbar-width: none;
+}
+
+/* Card overrides */
+.card {
+    background-color: #141b2d;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 12px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* Gradient button */
+.btn-gradient {
+    background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+    color: #fff;
+    border: none;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 600;
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.35);
+    transition: box-shadow 0.2s, transform 0.15s, background 0.2s;
+}
+.btn-gradient:hover,
+.btn-gradient:focus,
+.btn-gradient:active {
+    color: #fff;
+    background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+    box-shadow: 0 0 35px rgba(59, 130, 246, 0.6);
+    transform: translateY(-1px);
+}
+
+/* ---- Auth shell ---- */
+.auth-shell {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: radial-gradient(circle at 50% 0%, #0d1526 0%, #060810 60%);
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 420px;
+    background: #141b2d;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 16px;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55), 0 0 60px rgba(59, 130, 246, 0.08);
+    padding: 36px 32px;
+}
+
+.auth-brand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 28px;
+}
+
+.auth-brand-box {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 15px;
+}
+
+.auth-brand-name {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 800;
+    font-size: 17px;
+    color: #f1f5f9;
+    letter-spacing: -0.02em;
+}
+
+.auth-brand-pro {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: #3b82f6;
+    letter-spacing: 0.18em;
+    font-weight: 600;
+    margin-left: 4px;
+}
+
+.auth-shell .form-control {
+    background-color: #0b0f1a;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #e2e8f0;
+    border-radius: 10px;
+    padding: 12px 14px;
+}
+.auth-shell .form-control:focus {
+    background-color: #0b0f1a;
+    color: #e2e8f0;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.15);
+}
+.auth-shell .form-control::placeholder {
+    color: #475569;
+}
+.auth-shell .form-label {
+    color: #94a3b8;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+/* ---- Shared keyframes ---- */
+@keyframes blob {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33%      { transform: translate(40px, -60px) scale(1.12); }
+    66%      { transform: translate(-30px, 30px) scale(0.92); }
+}
+
+@keyframes blob2 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    40%      { transform: translate(-50px, 40px) scale(1.08); }
+    70%      { transform: translate(35px, -25px) scale(0.94); }
+}
+
+@keyframes marquee {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-10px); }
+}
+
+@keyframes glow-pulse {
+    0%, 100% { box-shadow: 0 0 20px rgba(59, 130, 246, .4), 0 0 60px rgba(59, 130, 246, .15); }
+    50%      { box-shadow: 0 0 40px rgba(59, 130, 246, .7), 0 0 100px rgba(59, 130, 246, .3); }
+}
+
+@keyframes grid-fade {
+    0%, 100% { opacity: 0.04; }
+    50%      { opacity: 0.08; }
+}
+
+@keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.35; }
+}
+
+.glow-pulse {
+    animation: glow-pulse 3s ease-in-out infinite;
+}
+
+.pulse-dot {
+    animation: pulse-dot 2s ease-in-out infinite;
+}

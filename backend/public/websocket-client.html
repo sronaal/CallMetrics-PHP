@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Tester - CallMetrics</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a1a;
+            color: #0f0;
+            padding: 20px;
+            margin: 0;
+        }
+        h1 {
+            border-bottom: 1px solid #0f0;
+            padding-bottom: 10px;
+        }
+        .section {
+            margin: 15px 0;
+            padding: 10px;
+            border: 1px solid #333;
+            border-radius: 4px;
+        }
+        #log {
+            background: #000;
+            padding: 10px;
+            height: 400px;
+            overflow-y: auto;
+            margin: 10px 0;
+            border: 1px solid #333;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        button {
+            background: #333;
+            color: #0f0;
+            border: 1px solid #0f0;
+            padding: 8px 16px;
+            cursor: pointer;
+            margin: 5px;
+            font-family: inherit;
+            font-size: 13px;
+        }
+        button:hover {
+            background: #0f0;
+            color: #000;
+        }
+        button.danger {
+            border-color: #f00;
+            color: #f00;
+        }
+        button.danger:hover {
+            background: #f00;
+            color: #000;
+        }
+        input, select {
+            background: #000;
+            color: #0f0;
+            border: 1px solid #0f0;
+            padding: 8px;
+            font-family: inherit;
+            font-size: 13px;
+            margin: 5px 0;
+        }
+        input[type="text"] {
+            width: 300px;
+        }
+        label {
+            display: inline-block;
+            width: 120px;
+            color: #888;
+        }
+        .status {
+            padding: 5px 10px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-left: 10px;
+        }
+        .status.connected { background: #060; color: #0f0; }
+        .status.disconnected { background: #600; color: #f00; }
+    </style>
+</head>
+<body>
+    <h1>🔌 WebSocket Tester — CallMetrics</h1>
+
+    <div class="section">
+        <h3>Conexion</h3>
+        <div>
+            <label>URL WebSocket:</label>
+            <input type="text" id="wsUrl" value="ws://localhost:8081">
+            <button onclick="connect()">Conectar</button>
+            <button onclick="disconnect()" class="danger">Desconectar</button>
+            <span id="status" class="status disconnected">DESCONECTADO</span>
+        </div>
+    </div>
+
+    <div class="section">
+        <h3>Suscripcion a Canales</h3>
+        <div>
+            <label>Canal:</label>
+            <select id="channelType">
+                <option value="dashboard">dashboard</option>
+                <option value="tenant_">tenant_{id}</option>
+                <option value="pbx_">pbx_{id}</option>
+                <option value="colas_">colas_{id}</option>
+            </select>
+            <input type="text" id="channelId" placeholder="ID (opcional)" style="width: 100px;">
+            <button onclick="subscribe()">Suscribir</button>
+            <button onclick="unsubscribe()">Desuscribir</button>
+        </div>
+    </div>
+
+    <div class="section">
+        <h3>Acciones</h3>
+        <button onclick="sendPing()">Ping</button>
+        <button onclick="clearLog()">Limpiar Log</button>
+    </div>
+
+    <div class="section">
+        <h3>Log de Mensajes</h3>
+        <div id="log"></div>
+    </div>
+
+    <script>
+        let ws;
+        let pingInterval;
+
+        function log(msg, type = 'info') {
+            const div = document.getElementById('log');
+            const line = document.createElement('div');
+            const time = new Date().toLocaleTimeString('es-AR');
+            line.textContent = `[${time}] ${msg}`;
+            line.style.color = type === 'error' ? '#f00' : type === 'success' ? '#0f0' : type === 'warn' ? '#ff0' : '#888';
+            div.appendChild(line);
+            div.scrollTop = div.scrollHeight;
+        }
+
+        function setStatus(connected) {
+            const el = document.getElementById('status');
+            if (connected) {
+                el.textContent = 'CONECTADO';
+                el.className = 'status connected';
+            } else {
+                el.textContent = 'DESCONECTADO';
+                el.className = 'status disconnected';
+            }
+        }
+
+        function connect() {
+            const url = document.getElementById('wsUrl').value;
+            log(`Conectando a ${url}...`);
+
+            ws = new WebSocket(url);
+
+            ws.onopen = () => {
+                log('Conexion establecida', 'success');
+                setStatus(true);
+                // Ping automatico cada 30 segundos
+                pingInterval = setInterval(() => sendPing(), 30000);
+            };
+
+            ws.onclose = () => {
+                log('Conexion cerrada', 'error');
+                setStatus(false);
+                clearInterval(pingInterval);
+            };
+
+            ws.onerror = (e) => {
+                log('Error de conexion: ' + e.message, 'error');
+                setStatus(false);
+            };
+
+            ws.onmessage = (e) => {
+                try {
+                    const data = JSON.parse(e.data);
+                    log(`Mensaje: ${JSON.stringify(data, null, 2)}`, 'success');
+                } catch {
+                    log(`Mensaje (raw): ${e.data}`, 'info');
+                }
+            };
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                log('Desconexion solicitada', 'warn');
+            }
+        }
+
+        function subscribe() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                log('No hay conexion activa', 'error');
+                return;
+            }
+            const type = document.getElementById('channelType').value;
+            const id = document.getElementById('channelId').value.trim();
+            const channel = id ? `${type}${id}` : type;
+
+            ws.send(JSON.stringify({ action: 'subscribe', channel }));
+            log(`Suscribiendo a: ${channel}`, 'warn');
+        }
+
+        function unsubscribe() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                log('No hay conexion activa', 'error');
+                return;
+            }
+            const type = document.getElementById('channelType').value;
+            const id = document.getElementById('channelId').value.trim();
+            const channel = id ? `${type}${id}` : type;
+
+            ws.send(JSON.stringify({ action: 'unsubscribe', channel }));
+            log(`Desuscribiendo de: ${channel}`, 'warn');
+        }
+
+        function sendPing() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) return;
+            ws.send(JSON.stringify({ action: 'ping' }));
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        log('Tester listo. Ingresa la URL y conecta.');
+    </script>
+</body>
+</html>

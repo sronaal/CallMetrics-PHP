@@ -1,0 +1,256 @@
+/* ============================================================
+   pages.css — estilos compartidos de páginas del port
+   (badges, paginación, stat cards, empty state, reveal codes).
+
+   Reutiliza el sistema dark de theme.css / dashboard.css.
+   La parte específica del módulo Call Center vive en
+   callcenter.css (queue cards, KPIs).
+   ============================================================ */
+
+/* ---- Badges de estado (cm_render_badge) ---- */
+.cm-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.cm-badge::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+}
+
+.cm-badge-ok {
+    color: #4ade80;
+    background: rgba(34, 197, 94, 0.12);
+}
+
+.cm-badge-warn {
+    color: #fbbf24;
+    background: rgba(245, 158, 11, 0.12);
+}
+
+.cm-badge-bad {
+    color: #f87171;
+    background: rgba(239, 68, 68, 0.12);
+}
+
+.cm-badge-info {
+    color: #60a5fa;
+    background: rgba(59, 130, 246, 0.12);
+}
+
+.cm-badge-violet {
+    color: #a78bfa;
+    background: rgba(139, 92, 246, 0.14);
+}
+
+.cm-badge-muted {
+    color: #94a3b8;
+    background: rgba(148, 163, 184, 0.12);
+}
+
+/* ---- Paginación (cm_render_pagination) ---- */
+.cm-pagination {
+    gap: 4px;
+}
+
+.cm-pagination .page-link {
+    background: #141b2d;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #94a3b8;
+    font-size: 12px;
+    border-radius: 8px;
+    padding: 5px 10px;
+}
+
+.cm-pagination .page-link:hover {
+    color: #e2e8f0;
+    background: rgba(59, 130, 246, 0.12);
+    border-color: rgba(59, 130, 246, 0.35);
+}
+
+.cm-pagination .page-item.active .page-link {
+    background: rgba(59, 130, 246, 0.18);
+    border-color: #3b82f6;
+    color: #60a5fa;
+    font-weight: 600;
+}
+
+.cm-pagination .page-item.disabled .page-link {
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+/* ---- Stat cards (cm_render_stat_card) ---- */
+.cm-stat-card {
+    padding: 16px;
+    height: 100%;
+}
+
+.cm-stat-card-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+    flex-shrink: 0;
+}
+
+.cm-stat-card-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #64748b;
+    font-weight: 600;
+}
+
+.cm-stat-card-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    color: #f1f5f9;
+    line-height: 1.2;
+    margin-top: 2px;
+}
+
+/* ---- Empty state (cm_render_empty_state) ---- */
+.cm-empty-state {
+    padding: 48px 24px;
+    text-align: center;
+}
+
+.cm-empty-state-icon {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 14px;
+    border-radius: 16px;
+    background: rgba(59, 130, 246, 0.1);
+    color: #60a5fa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+}
+
+.cm-empty-state-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #e2e8f0;
+    margin-bottom: 6px;
+}
+
+.cm-empty-state-msg {
+    font-size: 13px;
+    color: #64748b;
+    max-width: 420px;
+    margin: 0 auto 16px;
+}
+
+/* ---- Código de revelación (modal PBX: ID/TOKEN/AGENT) ---- */
+.cm-reveal-code {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    background: #0b0f1a;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 10px 12px;
+}
+
+.cm-reveal-code code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: #e2e8f0;
+    word-break: break-all;
+    user-select: all;
+}
+
+.cm-reveal-copy {
+    background: transparent;
+    border: none;
+    color: #64748b;
+    font-size: 13px;
+    padding: 2px 6px;
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+
+.cm-reveal-copy:hover {
+    color: #e2e8f0;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.cm-reveal-hint {
+    font-size: 12px;
+    color: #64748b;
+}
+
+/* ---- Formularios en modales (registro PBX) ---- */
+.modal-content {
+    background: #141b2d;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+}
+
+.modal-content .form-control {
+    background-color: #0b0f1a;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #e2e8f0;
+    border-radius: 8px;
+}
+
+.modal-content .form-control:focus {
+    background-color: #0b0f1a;
+    color: #e2e8f0;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.15);
+}
+
+.modal-content .form-label {
+    color: #94a3b8;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+/* ---- Acciones de tabla (iconos ghost) ---- */
+.cm-row-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.cm-row-action {
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    border: none;
+    background: transparent;
+    color: #64748b;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.cm-row-action:hover {
+    background: rgba(59, 130, 246, 0.12);
+    color: #60a5fa;
+}
+
+.cm-row-action.danger:hover {
+    background: rgba(239, 68, 68, 0.12);
+    color: #f87171;
+}

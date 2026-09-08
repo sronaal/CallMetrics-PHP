@@ -14,6 +14,9 @@ $routes = require __DIR__ . '/../config/routes.php';
 // Create Request from superglobals
 $request = \CallMetrics\Core\Request::fromGlobals();
 
+// CORS headers + OPTIONS preflight (MUST run before router — OPTIONS doesn't match any route)
+\CallMetrics\Http\Middleware\CorsMiddleware::handle();
+
 // Swagger UI endpoint
 if ($request->path() === '/docs' || $request->path() === '/docs/') {
     header('Content-Type: text/html; charset=utf-8');
@@ -38,9 +41,6 @@ if (!$match) {
 
 // Inject route parameters (e.g., {id})
 $request->setRouteParams($match['params']);
-
-// CORS headers + OPTIONS preflight
-\CallMetrics\Http\Middleware\CorsMiddleware::handle();
 
 // Auth middleware (if route requires authentication)
 if ($match['auth']) {

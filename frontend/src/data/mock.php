@@ -305,12 +305,26 @@ function cm_alertas(): array
 /* ---------- Usuario mock ---------- */
 
 /**
- * Usuario autenticado simulado (sin backend).
- * Hook de prueba: definir la constante CM_MOCK_ROL_OVERRIDE antes de
- * incluir mock.php para forzar un rol en los smoke tests de CI.
+ * Usuario autenticado — usa la sesión del API cuando existe,
+ * fallback a mock para pruebas sin backend.
  */
 function cm_usuario_actual(): array
 {
+    // Si hay sesión activa con datos del API, usarlos
+    if (Session::isAuthenticated()) {
+        $sessionUser = Session::user();
+        if ($sessionUser !== null) {
+            return [
+                'nombre'  => $sessionUser['nombre'] ?? 'Usuario',
+                'email'   => $sessionUser['email'] ?? '',
+                'rol'     => $sessionUser['rol'] ?? 'OPERADOR',
+                'empresa' => $sessionUser['empresa'] ?? '',
+                'tenant_id' => $sessionUser['tenantId'] ?? null,
+            ];
+        }
+    }
+
+    // Fallback mock (solo para pruebas sin login)
     $usuario = [
         'nombre'  => 'Jorge Mendoza',
         'email'   => 'jorge.mendoza@corporacionalpha.com',
@@ -330,7 +344,7 @@ function cm_rol(): string
 
 function cm_es_admin(): bool
 {
-    return in_array(cm_rol(), ['SUPER_ADMIN', 'ADMIN_EMPRESA'], true);
+    return in_array(cm_rol(), ['SUPER_ADMIN', 'ADMIN_TENANT', 'ADMIN_EMPRESA'], true);
 }
 
 /* ---------- Helpers de formato y estado ---------- */
@@ -436,6 +450,7 @@ function cm_t($key): string
         'uptime'          => 'Tiempo activo',
         'total'           => 'Total',
         'SUPER_ADMIN'     => 'Super Admin',
+        'ADMIN_TENANT'    => 'Admin Empresa',
         'ADMIN_EMPRESA'   => 'Admin Empresa',
         'SUPERVISOR'      => 'Supervisor',
         'OPERADOR'        => 'Operador',

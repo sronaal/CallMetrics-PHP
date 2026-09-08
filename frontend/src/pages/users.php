@@ -192,7 +192,7 @@ $rolesDisponibles = ['SUPER_ADMIN', 'ADMIN_TENANT', 'SUPERVISOR', 'OPERADOR'];
     var form = document.getElementById('cmUsersForm');
     var tbody = document.getElementById('usersTableRows');
     var title = document.getElementById('cmUsersTitle');
-    var API_BASE = '<?= Config::API_URL ?>';
+    var API_BASE = '<?= Config::API_PROXY_URL ?>';
     var TOKEN = '<?= Session::token() ?>';
 
     function apiRequest(method, path, data) {

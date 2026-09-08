@@ -119,7 +119,7 @@ function api_export_llamadas_csv(array $filters = []): void
 {
     $client = ApiClient::getInstance();
     $query = http_build_query($filters);
-    $url = Config::DIRECT_API_URL . "/llamadas/export?" . $query;
+    $url = Config::API_URL . "/llamadas/export?" . $query;
 
     $token = Session::token();
     $ch = curl_init($url);

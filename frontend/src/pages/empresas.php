@@ -169,7 +169,7 @@ $estados = ['active', 'trial', 'suspended'];
         var form = document.getElementById('cmEmpresasForm');
         var tbody = document.getElementById('empresasTableRows');
         var title = document.getElementById('cmEmpresasTitle');
-        var API_BASE = '<?= Config::API_URL ?>';
+        var API_BASE = '<?= Config::API_PROXY_URL ?>';
         var TOKEN = '<?= Session::token() ?>';
 
         function apiRequest(method, path, data) {

@@ -68,6 +68,7 @@ class JwtHelper
             'exp'  => $now + Config::jwtRefreshExpiry(),
             'sub'  => $userId,
             'type' => 'refresh',
+            'jti'  => bin2hex(random_bytes(16)), // nonce para unicidad
         ];
 
         return JWT::encode($payload, self::$secret, self::$algo);

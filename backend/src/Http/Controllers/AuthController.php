@@ -137,7 +137,6 @@ class AuthController extends Controller
              WHERE user_id = :uid AND token_hash = :hash LIMIT 1",
             [':uid' => $userId, ':hash' => $tokenHash]
         );
-
         if ($row === null || (int) $row['revoked'] === 1) {
             Response::unauthorized('Token revocado o invalido');
         }
@@ -181,7 +180,6 @@ class AuthController extends Controller
             ], 'Token renovado');
         } catch (\Throwable $e) {
             $db->pdo()->rollBack();
-            // Log error para debugging (en producción usar sistema de logging)
             error_log("Error en refresh token: " . $e->getMessage());
             Response::error('Error al renovar token', 500);
         }

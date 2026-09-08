@@ -205,7 +205,7 @@ $basePaginacion = BASE_URL . 'pbx.php?' . http_build_query(array_filter(['q' => 
 /* CRUD de PBX conectado al backend API. */
 (function () {
     'use strict';
-    var API_BASE = '<?= Config::API_URL ?>';
+    var API_BASE = '<?= Config::API_PROXY_URL ?>';
     var TOKEN = '<?= Session::token() ?>';
     var deletePbxId = null;
 

@@ -148,32 +148,43 @@ class AuthController extends Controller
             Response::forbidden('Usuario desactivado');
         }
 
-        // --- Revocar token anterior ---
-        $db->execute(
-            "UPDATE refresh_tokens SET revoked = 1 WHERE id = :id",
-            [':id' => (int) $row['id']]
-        );
+        // --- Revocar token anterior y generar nuevo par (Transacción atómica) ---
+        $db->pdo()->beginTransaction();
+        try {
+            // Revocar token anterior
+            $db->execute(
+                "UPDATE refresh_tokens SET revoked = 1 WHERE id = :id",
+                [':id' => (int) $row['id']]
+            );
 
-        // --- Generar nuevo par ---
-        $tenantId     = (int) ($user['tenant_id'] ?? 0);
-        $newAccess    = JwtHelper::generateAccessToken($userId, $tenantId, $user['rol'], $user['email']);
-        $newRefresh   = JwtHelper::generateRefreshToken($userId);
+            // Generar nuevo par
+            $tenantId     = (int) ($user['tenant_id'] ?? 0);
+            $newAccess    = JwtHelper::generateAccessToken($userId, $tenantId, $user['rol'], $user['email']);
+            $newRefresh   = JwtHelper::generateRefreshToken($userId);
 
-        // --- Almacenar hash del nuevo token de refresco ---
-        $db->insert(
-            "INSERT INTO refresh_tokens (user_id, token_hash, expires_at)
-             VALUES (:uid, :hash, FROM_UNIXTIME(:exp))",
-            [
-                ':uid'  => $userId,
-                ':hash' => JwtHelper::hash($newRefresh),
-                ':exp'  => time() + Config::jwtRefreshExpiry(),
-            ]
-        );
+            // Almacenar hash del nuevo token de refresco
+            $db->insert(
+                "INSERT INTO refresh_tokens (user_id, token_hash, expires_at)
+                 VALUES (:uid, :hash, FROM_UNIXTIME(:exp))",
+                [
+                    ':uid'  => $userId,
+                    ':hash' => JwtHelper::hash($newRefresh),
+                    ':exp'  => time() + Config::jwtRefreshExpiry(),
+                ]
+            );
 
-        Response::ok([
-            'accessToken'  => $newAccess,
-            'refreshToken' => $newRefresh,
-        ], 'Token renovado');
+            $db->pdo()->commit();
+
+            Response::ok([
+                'accessToken'  => $newAccess,
+                'refreshToken' => $newRefresh,
+            ], 'Token renovado');
+        } catch (\Throwable $e) {
+            $db->pdo()->rollBack();
+            // Log error para debugging (en producción usar sistema de logging)
+            error_log("Error en refresh token: " . $e->getMessage());
+            Response::error('Error al renovar token', 500);
+        }
     }
 
     // ---------------------------------------------------------------

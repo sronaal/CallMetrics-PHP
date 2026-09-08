@@ -214,11 +214,16 @@ abstract class BaseModel
         $countSql = "SELECT COUNT(*) as total FROM " . static::$table . $whereClause;
         $total    = (int) $db->fetchOne($countSql, $params)['total'];
 
-        // Página de datos
+        // Página de datos - Usar parámetros para LIMIT/OFFSET (Prevenir SQL Injection)
         $offset  = $page * $size;
         $dataSql = "SELECT * FROM " . static::$table
                  . $whereClause
-                 . " ORDER BY id DESC LIMIT $size OFFSET $offset";
+                 . " ORDER BY id DESC LIMIT :limit OFFSET :offset";
+        
+        // Agregar parámetros de límite y desplazamiento
+        $params[':limit'] = (int)$size;
+        $params[':offset'] = (int)$offset;
+        
         $data = $db->fetchAll($dataSql, $params);
 
         return ['data' => $data, 'total' => $total];

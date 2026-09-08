@@ -289,6 +289,7 @@ class AuthController extends Controller
     {
         $email       = trim((string) $request->input('email', ''));
         $newPassword = (string) $request->input('newPassword', '');
+        $ip          = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
 
         if ($email === '' || $newPassword === '') {
             Response::error('Email y nuevo password son requeridos', 422);
@@ -296,6 +297,14 @@ class AuthController extends Controller
 
         if (strlen($newPassword) < 6) {
             Response::error('El nuevo password debe tener al menos 6 caracteres', 422);
+        }
+
+        // --- Rate limiting (misma lógica que login) ---
+        $maxAttempts    = (int) Config::get('LOGIN_MAX_ATTEMPTS', 5);
+        $lockoutMinutes = (int) Config::get('LOGIN_LOCKOUT_MINUTES', 15);
+
+        if (User::countLoginAttempts($email, $ip, $lockoutMinutes) >= $maxAttempts) {
+            Response::error('Demasiados intentos. Intenta de nuevo mas tarde.', 429);
         }
 
         $user = User::findByEmail($email);
@@ -307,6 +316,9 @@ class AuthController extends Controller
         if ((int) $user['primer_ingreso'] !== 1) {
             Response::error('Este usuario ya completo su primer ingreso', 400);
         }
+
+        // --- Limpiar intentos antiguos en éxito ---
+        User::cleanOldAttempts(60);
 
         // --- Actualizar contraseña y limpiar bandera ---
         User::updateWithPassword((int) $user['id'], [

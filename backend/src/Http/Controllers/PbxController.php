@@ -89,7 +89,7 @@ class PbxController extends Controller
             'puerto_http'  => (int) ($data['puerto_http'] ?? 80),
             'tipo'         => strtoupper($data['tipo'] ?? 'ASTERISK'),
             'version'      => trim($data['version'] ?? ''),
-            'token_agente' => trim($data['token_agente']),
+            'token_agente' => Pbx::hashToken(trim($data['token_agente'])),
             'estado'       => 'OFFLINE',
             'activo'       => 1,
         ]);
@@ -122,7 +122,7 @@ class PbxController extends Controller
             'puerto_http'  => isset($data['puerto_http']) ? (int) $data['puerto_http'] : null,
             'tipo'         => strtoupper($data['tipo'] ?? ''),
             'version'      => trim($data['version'] ?? ''),
-            'token_agente' => trim($data['token_agente'] ?? ''),
+            'token_agente' => !empty($data['token_agente']) ? Pbx::hashToken(trim($data['token_agente'])) : null,
         ], fn($v) => $v !== '' && $v !== null);
 
         Pbx::update($id, $updateData);

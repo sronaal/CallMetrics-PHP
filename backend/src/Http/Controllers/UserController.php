@@ -84,6 +84,13 @@ class UserController extends Controller
             $errors['rol'] = 'Rol invalido';
         }
 
+        // Restricción de jerarquía: ADMIN_TENANT no puede asignar SUPER_ADMIN
+        $currentUserRole = TenantContext::getRole();
+        $requestedRole = strtoupper($data['rol'] ?? 'OPERADOR');
+        if ($currentUserRole === 'ADMIN_TENANT' && $requestedRole === 'SUPER_ADMIN') {
+            $errors['rol'] = 'No tiene permisos para asignar este rol';
+        }
+
         if (!empty($errors)) {
             Response::error('Errores de validacion', 422, $errors);
         }
@@ -133,6 +140,19 @@ class UserController extends Controller
 
         if (!empty($data['password']) && strlen($data['password']) < 6) {
             $errors['password'] = 'Minimo 6 caracteres';
+        }
+
+        // Restricción de jerarquía: ADMIN_TENANT no puede asignar SUPER_ADMIN
+        if (!empty($data['rol'])) {
+            $currentUserRole = TenantContext::getRole();
+            $requestedRole = strtoupper($data['rol']);
+            if ($currentUserRole === 'ADMIN_TENANT' && $requestedRole === 'SUPER_ADMIN') {
+                $errors['rol'] = 'No tiene permisos para asignar este rol';
+            }
+            $rolesValidos = ['SUPER_ADMIN', 'ADMIN_TENANT', 'SUPERVISOR', 'OPERADOR'];
+            if (!in_array($requestedRole, $rolesValidos)) {
+                $errors['rol'] = 'Rol invalido';
+            }
         }
 
         if (!empty($errors)) {

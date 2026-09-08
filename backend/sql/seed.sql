@@ -20,8 +20,11 @@ INSERT INTO usuarios (tenant_id, nombre, email, password_hash, rol, activo, prim
 (2, 'Maria Gerente',     'maria@beta.com',       '$$CAMBiar_EN_PRODUCCION$$' -- ⚠️ CAMBIAR INMEDIATAMENTE DESPUÉS DEL DEPLOY, 'ADMIN_TENANT', 1, 0),
 (2, 'Luis Operador',     'luis@beta.com',        '$$CAMBiar_EN_PRODUCCION$$' -- ⚠️ CAMBIAR INMEDIATAMENTE DESPUÉS DEL DEPLOY, 'OPERADOR', 1, 0);
 
--- PBX de prueba (con token para agentes Python)
+-- PBX de prueba (tokens hasheados con SHA-256 — nunca almacenar en texto plano)
+-- Token original: callmetrics-agent-token-2026
+-- Token original: callmetrics-agent-token-backup
+-- Token original: beta-agent-token-2026
 INSERT INTO pbx (tenant_id, nombre, ip_address, puerto_ami, puerto_http, tipo, version, token_agente, estado, activo) VALUES
-(1, 'Alpha PBX Principal', '192.168.1.10', 5038, 80, 'ASTERISK', '20.18', 'callmetrics-agent-token-2026', 'ONLINE', 1),
-(1, 'Alpha PBX Backup',    '192.168.1.11', 5038, 80, 'ASTERISK', '20.18', 'callmetrics-agent-token-backup', 'OFFLINE', 1),
-(2, 'Beta PBX Central',    '10.0.0.5',     5038, 80, 'FREPBX',   '17.15', 'beta-agent-token-2026', 'ONLINE', 1);
+(1, 'Alpha PBX Principal', '192.168.1.10', 5038, 80, 'ASTERISK', '20.18', '5a5328a4ab0faef1398b29b332422a64620163a77fce0f58c44ff2b845f2972d', 'ONLINE', 1),
+(1, 'Alpha PBX Backup',    '192.168.1.11', 5038, 80, 'ASTERISK', '20.18', '6ff5f16c1ed94d129334617000fe3ed087b993c7a1fc2e1b8615c4af4789342d', 'OFFLINE', 1),
+(2, 'Beta PBX Central',    '10.0.0.5',     5038, 80, 'FREPBX',   '17.15', '2b712620608fca595af4a1a2d6e56d06ac8b541550762256952ac9d6fa701a12', 'ONLINE', 1);

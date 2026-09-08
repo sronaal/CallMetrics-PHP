@@ -15,11 +15,21 @@ class Pbx extends BaseModel
     protected static bool $tenantScoped = true;
 
     /**
+     * Hash de token para almacenamiento seguro (SHA-256).
+     */
+    public static function hashToken(string $token): string
+    {
+        return hash('sha256', $token);
+    }
+
+    /**
      * Buscar un servidor PBX por su token de autenticación de agente.
+     * Compara hashes SHA-256 — nunca almacena tokens en texto plano.
      */
     public static function findByToken(string $token): ?array
     {
-        return parent::findBy('token_agente', $token);
+        $hashed = self::hashToken($token);
+        return parent::findBy('token_agente', $hashed);
     }
 
     /**

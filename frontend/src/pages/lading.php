@@ -8,12 +8,12 @@ ob_start();
 
 /* ---------------- Data ---------------- */
 $featureList = [
-    ['icon' => 'bi-activity', 'title' => 'Monitoreo en Tiempo Real', 'tag' => 'Core', 'desc' => 'Dashboards actualizados cada segundo con métricas de ASR, ACD, concurrencia y estado de agentes en todos tus PBX.', 'color' => '#3b82f6'],
+    ['icon' => 'bi-activity', 'title' => 'Monitoreo en Tiempo Real', 'tag' => 'Core', 'desc' => 'Dashboards actualizados cada segundo con métricas de ASR, ACD, concurrencia y estado de agentes en todos tus PBX.', 'color' => '#4f6ef7'],
     ['icon' => 'bi-bell', 'title' => 'Alertas Inteligentes', 'tag' => 'IA', 'desc' => 'Detección proactiva con reglas configurables y ML. Recibe alertas por Slack, email o webhook antes de que el problema escale.', 'color' => '#a78bfa'],
-    ['icon' => 'bi-server', 'title' => 'Salud de Infraestructura', 'tag' => 'Infraestructura', 'desc' => 'Monitoriza CPU, RAM, latencia SIP y estado de trunks en tiempo real. Compatible con Asterisk, FreePBX y cualquier PABX SIP.', 'color' => '#22c55e'],
+    ['icon' => 'bi-server', 'title' => 'Salud de Infraestructura', 'tag' => 'Infraestructura', 'desc' => 'Monitoriza CPU, RAM, latencia SIP y estado de trunks en tiempo real. Compatible con Asterisk, FreePBX y cualquier PABX SIP.', 'color' => '#10b981'],
     ['icon' => 'bi-bar-chart', 'title' => 'Reportes Avanzados', 'tag' => 'Analytics', 'desc' => 'Análisis histórico con hasta 2 años de retención. Exporta a PDF, Excel o conecta con tu BI via API REST.', 'color' => '#f59e0b'],
-    ['icon' => 'bi-globe', 'title' => 'Multi-Tenant y Multi-PBX', 'tag' => 'Escala', 'desc' => 'Gestiona cientos de clientes y PBX desde una sola interfaz. Aislamiento total de datos y permisos granulares por rol.', 'color' => '#06b6d4'],
-    ['icon' => 'bi-shield-check', 'title' => 'Seguridad Enterprise', 'tag' => 'Seguridad', 'desc' => 'SOC 2 Type II, cifrado end-to-end, SSO con SAML 2.0, logs de auditoría y cumplimiento GDPR / LOPD incluidos.', 'color' => '#f87171'],
+    ['icon' => 'bi-globe', 'title' => 'Multi-Tenant y Multi-PBX', 'tag' => 'Escala', 'desc' => 'Gestiona cientos de clientes y PBX desde una sola interfaz. Aislamiento total de datos y permisos granulares por rol.', 'color' => '#0ea5a0'],
+    ['icon' => 'bi-shield-check', 'title' => 'Seguridad Enterprise', 'tag' => 'Seguridad', 'desc' => 'SOC 2 Type II, cifrado end-to-end, SSO con SAML 2.0, logs de auditoría y cumplimiento GDPR / LOPD incluidos.', 'color' => '#f43f5e'],
 ];
 
 $productTabs = [
@@ -38,20 +38,20 @@ $productTabs = [
 ];
 
 $testimonialList = [
-    ['quote' => 'Reducimos el tiempo de detección de incidencias de 45 minutos a menos de 2 minutos. CallMetric Pro es indispensable para nuestro equipo de operaciones.', 'name' => 'María García', 'role' => 'CTO · Telecom Solutions LATAM', 'avatar' => 'MG', 'color' => '#3b82f6'],
-    ['quote' => 'Con 23 PBX distribuidos en 8 países, necesitábamos visibilidad centralizada. CallMetric Pro nos la dio en una tarde de implementación.', 'name' => 'Carlos Rodríguez', 'role' => 'Director de IT · Grupo Financiero Norte', 'avatar' => 'CR', 'color' => '#22c55e'],
+    ['quote' => 'Reducimos el tiempo de detección de incidencias de 45 minutos a menos de 2 minutos. CallMetric Pro es indispensable para nuestro equipo de operaciones.', 'name' => 'María García', 'role' => 'CTO · Telecom Solutions LATAM', 'avatar' => 'MG', 'color' => '#4f6ef7'],
+    ['quote' => 'Con 23 PBX distribuidos en 8 países, necesitábamos visibilidad centralizada. CallMetric Pro nos la dio en una tarde de implementación.', 'name' => 'Carlos Rodríguez', 'role' => 'Director de IT · Grupo Financiero Norte', 'avatar' => 'CR', 'color' => '#10b981'],
     ['quote' => 'El nivel de detalle en las métricas SIP es impresionante. Ninguna otra solución ofrece este grado de observabilidad para infraestructura Asterisk.', 'name' => 'Ana Martínez', 'role' => 'Arquitecta de Sistemas · Contact Center México', 'avatar' => 'AM', 'color' => '#a78bfa'],
 ];
 
 $planList = [
     [
-        'name' => 'Starter', 'color' => '#64748b', 'highlight' => false, 'badge' => null,
+        'name' => 'Starter', 'color' => '#5a6d94', 'highlight' => false, 'badge' => null,
         'annual' => 79, 'monthly' => 99, 'custom' => false,
         'desc' => 'Para equipos pequeños que empiezan con monitoreo.',
         'features' => ['Hasta 5 agentes', '1 PBX', 'Alertas básicas por email', '30 días de histórico', 'Dashboard estándar'],
     ],
     [
-        'name' => 'Professional', 'color' => '#3b82f6', 'highlight' => true, 'badge' => 'Más popular',
+        'name' => 'Professional', 'color' => '#4f6ef7', 'highlight' => true, 'badge' => 'Más popular',
         'annual' => 239, 'monthly' => 299, 'custom' => false,
         'desc' => 'El plan preferido por equipos de operaciones en crecimiento.',
         'features' => ['Hasta 50 agentes', 'Hasta 3 PBX', 'Alertas inteligentes + Slack/webhook', '90 días de histórico', 'Dashboards personalizados', 'API REST + acceso multi-usuario'],
@@ -65,8 +65,8 @@ $planList = [
 ];
 
 $statsList = [
-    ['target' => 1000000, 'duration' => 2000, 'format' => 'millions', 'label' => 'Llamadas procesadas al día', 'icon' => 'bi-telephone-inbound', 'color' => '#3b82f6'],
-    ['target' => 9999, 'duration' => 2200, 'format' => 'percent', 'label' => 'Uptime garantizado por SLA', 'icon' => 'bi-shield-check', 'color' => '#22c55e'],
+    ['target' => 1000000, 'duration' => 2000, 'format' => 'millions', 'label' => 'Llamadas procesadas al día', 'icon' => 'bi-telephone-inbound', 'color' => '#4f6ef7'],
+    ['target' => 9999, 'duration' => 2200, 'format' => 'percent', 'label' => 'Uptime garantizado por SLA', 'icon' => 'bi-shield-check', 'color' => '#10b981'],
     ['target' => 50, 'duration' => 1800, 'format' => 'ms', 'label' => 'Tiempo de alerta promedio', 'icon' => 'bi-lightning-charge', 'color' => '#f59e0b'],
     ['target' => 500, 'duration' => 2000, 'format' => 'plus', 'label' => 'Empresas en producción', 'icon' => 'bi-people', 'color' => '#a78bfa'],
 ];

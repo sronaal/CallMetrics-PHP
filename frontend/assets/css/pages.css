@@ -1,13 +1,9 @@
 /* ============================================================
-   pages.css — estilos compartidos de páginas del port
-   (badges, paginación, stat cards, empty state, reveal codes).
-
-   Reutiliza el sistema dark de theme.css / dashboard.css.
-   La parte específica del módulo Call Center vive en
-   callcenter.css (queue cards, KPIs).
+   pages.css — CallMetric Pro "Telco Enterprise" shared components
+   (badges, pagination, stat cards, empty state, reveal codes).
    ============================================================ */
 
-/* ---- Badges de estado (cm_render_badge) ---- */
+/* ---- Status badges (cm_render_badge) ---- */
 .cm-badge {
     display: inline-flex;
     align-items: center;
@@ -30,59 +26,59 @@
 }
 
 .cm-badge-ok {
-    color: #4ade80;
-    background: rgba(34, 197, 94, 0.12);
+    color: var(--cm-success);
+    background: var(--cm-success-dim);
 }
 
 .cm-badge-warn {
-    color: #fbbf24;
-    background: rgba(245, 158, 11, 0.12);
+    color: var(--cm-accent);
+    background: var(--cm-warning-dim);
 }
 
 .cm-badge-bad {
-    color: #f87171;
-    background: rgba(239, 68, 68, 0.12);
+    color: var(--cm-danger);
+    background: var(--cm-danger-dim);
 }
 
 .cm-badge-info {
-    color: #60a5fa;
-    background: rgba(59, 130, 246, 0.12);
+    color: var(--cm-primary-hover);
+    background: var(--cm-primary-dim);
 }
 
 .cm-badge-violet {
     color: #a78bfa;
-    background: rgba(139, 92, 246, 0.14);
+    background: rgba(139, 92, 246, 0.12);
 }
 
 .cm-badge-muted {
-    color: #94a3b8;
-    background: rgba(148, 163, 184, 0.12);
+    color: var(--cm-text-muted);
+    background: rgba(148, 163, 184, 0.1);
 }
 
-/* ---- Paginación (cm_render_pagination) ---- */
+/* ---- Pagination (cm_render_pagination) ---- */
 .cm-pagination {
     gap: 4px;
 }
 
 .cm-pagination .page-link {
-    background: #141b2d;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    color: #94a3b8;
+    background: var(--cm-bg-surface-1);
+    border: 1px solid var(--cm-border);
+    color: var(--cm-text-muted);
     font-size: 12px;
-    border-radius: 8px;
+    border-radius: var(--cm-radius-sm);
     padding: 5px 10px;
 }
 
 .cm-pagination .page-link:hover {
-    color: #e2e8f0;
-    background: rgba(59, 130, 246, 0.12);
-    border-color: rgba(59, 130, 246, 0.35);
+    color: var(--cm-text-primary);
+    background: var(--cm-primary-dim);
+    border-color: rgba(79, 110, 247, 0.3);
 }
 
 .cm-pagination .page-item.active .page-link {
-    background: rgba(59, 130, 246, 0.18);
-    border-color: #3b82f6;
-    color: #60a5fa;
+    background: var(--cm-primary-dim);
+    border-color: var(--cm-primary);
+    color: var(--cm-primary-hover);
     font-weight: 600;
 }
 
@@ -100,7 +96,7 @@
 .cm-stat-card-icon {
     width: 40px;
     height: 40px;
-    border-radius: 10px;
+    border-radius: var(--cm-radius-md);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -112,15 +108,15 @@
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: #64748b;
+    color: var(--cm-text-muted);
     font-weight: 600;
 }
 
 .cm-stat-card-value {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--cm-font-mono);
     font-size: 22px;
     font-weight: 700;
-    color: #f1f5f9;
+    color: var(--cm-text-primary);
     line-height: 1.2;
     margin-top: 2px;
 }
@@ -135,9 +131,9 @@
     width: 56px;
     height: 56px;
     margin: 0 auto 14px;
-    border-radius: 16px;
-    background: rgba(59, 130, 246, 0.1);
-    color: #60a5fa;
+    border-radius: var(--cm-radius-xl);
+    background: var(--cm-primary-dim);
+    color: var(--cm-primary-hover);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -147,33 +143,33 @@
 .cm-empty-state-title {
     font-size: 15px;
     font-weight: 600;
-    color: #e2e8f0;
+    color: var(--cm-text-primary);
     margin-bottom: 6px;
 }
 
 .cm-empty-state-msg {
     font-size: 13px;
-    color: #64748b;
+    color: var(--cm-text-muted);
     max-width: 420px;
     margin: 0 auto 16px;
 }
 
-/* ---- Código de revelación (modal PBX: ID/TOKEN/AGENT) ---- */
+/* ---- Reveal code (modal PBX: ID/TOKEN/AGENT) ---- */
 .cm-reveal-code {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    background: #0b0f1a;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 8px;
+    background: var(--cm-bg-deep);
+    border: 1px solid var(--cm-border);
+    border-radius: var(--cm-radius-sm);
     padding: 10px 12px;
 }
 
 .cm-reveal-code code {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--cm-font-mono);
     font-size: 12px;
-    color: #e2e8f0;
+    color: var(--cm-text-primary);
     word-break: break-all;
     user-select: all;
 }
@@ -181,51 +177,51 @@
 .cm-reveal-copy {
     background: transparent;
     border: none;
-    color: #64748b;
+    color: var(--cm-text-muted);
     font-size: 13px;
     padding: 2px 6px;
-    border-radius: 6px;
+    border-radius: var(--cm-radius-sm);
     flex-shrink: 0;
 }
 
 .cm-reveal-copy:hover {
-    color: #e2e8f0;
+    color: var(--cm-text-primary);
     background: rgba(255, 255, 255, 0.04);
 }
 
 .cm-reveal-hint {
     font-size: 12px;
-    color: #64748b;
+    color: var(--cm-text-muted);
 }
 
-/* ---- Formularios en modales (registro PBX) ---- */
+/* ---- Modal forms ---- */
 .modal-content {
-    background: #141b2d;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 14px;
+    background: var(--cm-bg-surface-1);
+    border: 1px solid var(--cm-border);
+    border-radius: var(--cm-radius-lg);
 }
 
 .modal-content .form-control {
-    background-color: #0b0f1a;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: #e2e8f0;
-    border-radius: 8px;
+    background-color: var(--cm-bg-deep);
+    border: 1px solid var(--cm-border-strong);
+    color: var(--cm-text-primary);
+    border-radius: var(--cm-radius-sm);
 }
 
 .modal-content .form-control:focus {
-    background-color: #0b0f1a;
-    color: #e2e8f0;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.15);
+    background-color: var(--cm-bg-deep);
+    color: var(--cm-text-primary);
+    border-color: var(--cm-primary);
+    box-shadow: 0 0 0 0.2rem var(--cm-primary-dim);
 }
 
 .modal-content .form-label {
-    color: #94a3b8;
+    color: var(--cm-text-muted);
     font-size: 13px;
     font-weight: 500;
 }
 
-/* ---- Acciones de tabla (iconos ghost) ---- */
+/* ---- Table row actions (ghost icons) ---- */
 .cm-row-actions {
     display: flex;
     gap: 4px;
@@ -234,10 +230,10 @@
 .cm-row-action {
     width: 28px;
     height: 28px;
-    border-radius: 7px;
+    border-radius: var(--cm-radius-sm);
     border: none;
     background: transparent;
-    color: #64748b;
+    color: var(--cm-text-muted);
     font-size: 13px;
     display: inline-flex;
     align-items: center;
@@ -246,11 +242,11 @@
 }
 
 .cm-row-action:hover {
-    background: rgba(59, 130, 246, 0.12);
-    color: #60a5fa;
+    background: var(--cm-primary-dim);
+    color: var(--cm-primary-hover);
 }
 
 .cm-row-action.danger:hover {
-    background: rgba(239, 68, 68, 0.12);
-    color: #f87171;
+    background: var(--cm-danger-dim);
+    color: var(--cm-danger);
 }

@@ -35,10 +35,10 @@ $colasActivas = array_slice($colasActivas, 0, 6);
 
 <!-- KPIs -->
 <div class="cm-kpi-row">
-    <?= cm_render_stat_card('En Cola', $enColaKpi, '#fbbf24', 'bi-clock-history') ?>
-    <?= cm_render_stat_card('Llamadas Activas', $activasKpi, '#60a5fa', 'bi-telephone-inbound') ?>
-    <?= cm_render_stat_card('Agentes Disponibles', $disponibles, '#4ade80', 'bi-person-check') ?>
-    <?= cm_render_stat_card('Nivel Servicio', htmlspecialchars(cm_format_number(round($slaPromedio))) . '%', '#8b5cf6', 'bi-graph-up') ?>
+    <?= cm_render_stat_card('En Cola', $enColaKpi, '#f59e0b', 'bi-clock-history') ?>
+    <?= cm_render_stat_card('Llamadas Activas', $activasKpi, '#4f6ef7', 'bi-telephone-inbound') ?>
+    <?= cm_render_stat_card('Agentes Disponibles', $disponibles, '#10b981', 'bi-person-check') ?>
+    <?= cm_render_stat_card('Nivel Servicio', htmlspecialchars(cm_format_number(round($slaPromedio))) . '%', '#a78bfa', 'bi-graph-up') ?>
 </div>
 
 <!-- Colas activas -->

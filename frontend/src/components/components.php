@@ -109,7 +109,7 @@ function cm_hex_to_rgba($hex, $alpha): string
         $hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
     }
     if (strlen($hex) !== 6) {
-        return 'rgba(59,130,246,' . $alpha . ')';
+        return 'rgba(79,110,247,' . $alpha . ')';
     }
     $r = hexdec(substr($hex, 0, 2));
     $g = hexdec(substr($hex, 2, 2));
@@ -123,7 +123,7 @@ function cm_hex_to_rgba($hex, $alpha): string
  */
 function cm_render_stat_card($label, $value, $color = null, $icon = null): string
 {
-    $color = $color ?? '#60a5fa';
+    $color = $color ?? '#4f6ef7';
     $iconHtml = '';
     if ($icon) {
         $bg = 'background:' . cm_hex_to_rgba($color, 0.14);

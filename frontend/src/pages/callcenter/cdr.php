@@ -79,10 +79,10 @@ usort($resumenAgentes, fn($a, $b) => $b['atendidas'] <=> $a['atendidas']);
 
 <!-- Métricas -->
 <div class="cm-kpi-row">
-    <?= cm_render_stat_card('Llamadas', $totalLlamadas, '#60a5fa', 'bi-telephone') ?>
-    <?= cm_render_stat_card('Colas', count($resumenColas), '#8b5cf6', 'bi-list-ul') ?>
-    <?= cm_render_stat_card('Agentes', count($agentesCc), '#4ade80', 'bi-people') ?>
-    <?= cm_render_stat_card('Efectividad', $efectividad . '%', '#fbbf24', 'bi-bullseye') ?>
+    <?= cm_render_stat_card('Llamadas', $totalLlamadas, '#4f6ef7', 'bi-telephone') ?>
+    <?= cm_render_stat_card('Colas', count($resumenColas), '#a78bfa', 'bi-list-ul') ?>
+    <?= cm_render_stat_card('Agentes', count($agentesCc), '#10b981', 'bi-people') ?>
+    <?= cm_render_stat_card('Efectividad', $efectividad . '%', '#f59e0b', 'bi-bullseye') ?>
 </div>
 
 <!-- Filtros de fecha -->

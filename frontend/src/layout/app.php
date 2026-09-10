@@ -91,7 +91,7 @@ $sidebarItems = $ccLayout ? [
             <a class="topbar-profile" href="<?= BASE_URL ?>auth.php" title="Cerrar sesión" style="text-decoration:none">
                 <span class="topbar-profile-avatar"><?= htmlspecialchars($iniciales) ?></span>
                 <span class="topbar-profile-name"><?= htmlspecialchars($usuario['nombre']) ?></span>
-                <i class="bi bi-box-arrow-right" style="font-size:13px;color:#64748b"></i>
+                <i class="bi bi-box-arrow-right" style="font-size:13px;color:#7a8ba6"></i>
             </a>
         </header>
 

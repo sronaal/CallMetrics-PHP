@@ -33,16 +33,16 @@ $mockupBarBase = 52;
 $mockupBarCols = count($mockupBars);
 
 $mockupKpis = [
-    ['label' => 'Activas', 'value' => '247', 'color' => '#4ade80'],
-    ['label' => 'ASR', 'value' => '83.4%', 'color' => '#60a5fa'],
-    ['label' => 'ACD', 'value' => '4:28', 'color' => '#fbbf24'],
-    ['label' => 'Agentes', 'value' => '89/120', 'color' => '#60a5fa'],
+    ['label' => 'Activas', 'value' => '247', 'color' => '#10b981'],
+    ['label' => 'ASR', 'value' => '83.4%', 'color' => '#4f6ef7'],
+    ['label' => 'ACD', 'value' => '4:28', 'color' => '#f59e0b'],
+    ['label' => 'Agentes', 'value' => '89/120', 'color' => '#4f6ef7'],
 ];
 
 $mockupRows = [
-    ['origin' => '+34 612 345 678', 'dest' => 'Cola Ventas', 'dur' => '4:32', 'status' => 'Activa', 'color' => '#4ade80'],
-    ['origin' => '+1 555 234 5678', 'dest' => 'Cola Soporte', 'dur' => '12:47', 'status' => 'En espera', 'color' => '#fbbf24'],
-    ['origin' => '+34 654 789 012', 'dest' => 'Ext. 1042', 'dur' => '2:15', 'status' => 'Grabando', 'color' => '#f87171'],
+    ['origin' => '+34 612 345 678', 'dest' => 'Cola Ventas', 'dur' => '4:32', 'status' => 'Activa', 'color' => '#10b981'],
+    ['origin' => '+1 555 234 5678', 'dest' => 'Cola Soporte', 'dur' => '12:47', 'status' => 'En espera', 'color' => '#f59e0b'],
+    ['origin' => '+34 654 789 012', 'dest' => 'Ext. 1042', 'dur' => '2:15', 'status' => 'Grabando', 'color' => '#f43f5e'],
 ];
 
 $mockupNavItems = [
@@ -56,9 +56,9 @@ $mockupNavItems = [
     <!-- Browser chrome -->
     <div class="mockup-chrome">
         <div class="mockup-chrome-dots">
-            <span class="mockup-chrome-dot" style="background:#ef4444"></span>
+            <span class="mockup-chrome-dot" style="background:#f43f5e"></span>
             <span class="mockup-chrome-dot" style="background:#f59e0b"></span>
-            <span class="mockup-chrome-dot" style="background:#22c55e"></span>
+            <span class="mockup-chrome-dot" style="background:#10b981"></span>
         </div>
         <div class="mockup-chrome-url">app.callmetric.pro/dashboard</div>
         <div style="width:60px"></div>
@@ -116,12 +116,12 @@ $mockupNavItems = [
                         <svg viewBox="0 0 <?= $mockupAreaW ?> <?= $mockupAreaH ?>" preserveAspectRatio="none" aria-hidden="true">
                             <defs>
                                 <linearGradient id="mockupAreaGradient_<?= $mockupUid ?>" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.35"></stop>
-                                    <stop offset="100%" stop-color="#3b82f6" stop-opacity="0"></stop>
+                                    <stop offset="0%" stop-color="#4f6ef7" stop-opacity="0.35"></stop>
+                                    <stop offset="100%" stop-color="#4f6ef7" stop-opacity="0"></stop>
                                 </linearGradient>
                             </defs>
                             <path d="<?= $mockupAreaFill ?>" fill="url(#mockupAreaGradient_<?= $mockupUid ?>)"></path>
-                            <path d="<?= $mockupAreaLine ?>" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"></path>
+                            <path d="<?= $mockupAreaLine ?>" fill="none" stroke="#4f6ef7" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"></path>
                         </svg>
                     </div>
                 </div>
@@ -137,7 +137,7 @@ $mockupNavItems = [
                                 $mockupXA = round($mockupGs + 22.5, 1);
                                 $mockupXE = round($mockupGs + 39.5, 1);
                                 ?>
-                                <rect x="<?= $mockupXA ?>" y="<?= $mockupH ?>" width="13" height="<?= $mockupBarBase - $mockupH ?>" rx="2" fill="#3b82f6"></rect>
+                                <rect x="<?= $mockupXA ?>" y="<?= $mockupH ?>" width="13" height="<?= $mockupBarBase - $mockupH ?>" rx="2" fill="#4f6ef7"></rect>
                                 <rect x="<?= $mockupXE ?>" y="<?= $mockupH2 ?>" width="13" height="<?= $mockupBarBase - $mockupH2 ?>" rx="2" fill="#f59e0b"></rect>
                             <?php endforeach; ?>
                         </svg>

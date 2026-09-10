@@ -30,10 +30,10 @@ function cm_duration($seconds)
 }
 
 $kpiList = [
-    ['label' => 'Llamadas activas', 'icon' => 'bi-telephone-inbound', 'iconColor' => '#4ade80', 'iconBg' => 'rgba(34,197,94,0.14)', 'value' => (string)($stats['llamadasActivas'] ?? 247), 'subtitle' => 'llamadas activas ahora', 'trend' => '+4.2%', 'trendClass' => 'up'],
-    ['label' => 'Tasa ASR 24h', 'icon' => 'bi-bullseye', 'iconColor' => '#60a5fa', 'iconBg' => 'rgba(59,130,246,0.14)', 'value' => ($stats['tasaASR'] ?? '83.4') . '%', 'subtitle' => 'tasa de respuesta en 24h', 'trend' => '+1.8%', 'trendClass' => 'up'],
-    ['label' => 'ACD promedio', 'icon' => 'bi-clock-history', 'iconColor' => '#fbbf24', 'iconBg' => 'rgba(245,158,11,0.14)', 'value' => $stats['acdPromedio'] ?? '4:28', 'subtitle' => 'duración promedio', 'trend' => '-12s', 'trendClass' => 'down'],
-    ['label' => 'Agentes', 'icon' => 'bi-people', 'iconColor' => '#60a5fa', 'iconBg' => 'rgba(59,130,246,0.14)', 'value' => ($stats['agentesActivos'] ?? '89') . '/' . ($stats['agentesTotal'] ?? '120'), 'subtitle' => 'conectados / total', 'trend' => 'estable', 'trendClass' => 'neutral'],
+    ['label' => 'Llamadas activas', 'icon' => 'bi-telephone-inbound', 'iconColor' => '#10b981', 'iconBg' => 'rgba(16,185,129,0.14)', 'value' => (string)($stats['llamadasActivas'] ?? 247), 'subtitle' => 'llamadas activas ahora', 'trend' => '+4.2%', 'trendClass' => 'up'],
+    ['label' => 'Tasa ASR 24h', 'icon' => 'bi-bullseye', 'iconColor' => '#4f6ef7', 'iconBg' => 'rgba(79,110,247,0.14)', 'value' => ($stats['tasaASR'] ?? '83.4') . '%', 'subtitle' => 'tasa de respuesta en 24h', 'trend' => '+1.8%', 'trendClass' => 'up'],
+    ['label' => 'ACD promedio', 'icon' => 'bi-clock-history', 'iconColor' => '#f59e0b', 'iconBg' => 'rgba(245,158,11,0.14)', 'value' => $stats['acdPromedio'] ?? '4:28', 'subtitle' => 'duración promedio', 'trend' => '-12s', 'trendClass' => 'down'],
+    ['label' => 'Agentes', 'icon' => 'bi-people', 'iconColor' => '#4f6ef7', 'iconBg' => 'rgba(79,110,247,0.14)', 'value' => ($stats['agentesActivos'] ?? '89') . '/' . ($stats['agentesTotal'] ?? '120'), 'subtitle' => 'conectados / total', 'trend' => 'estable', 'trendClass' => 'neutral'],
 ];
 
 $alertsList = [
@@ -106,7 +106,7 @@ function cm_agent_initials($name)
                     <p class="dash-card-subtitle">Últimas 24 horas · Todos los PBX</p>
                 </div>
                 <div class="d-flex gap-4">
-                    <div class="chart-stat-chip">PICO<strong style="color:#60a5fa">247</strong></div>
+                    <div class="chart-stat-chip">PICO<strong style="color:#4f6ef7">247</strong></div>
                     <div class="chart-stat-chip">PROMEDIO<strong style="color:#94a3b8">109</strong></div>
                 </div>
             </div>
@@ -114,7 +114,7 @@ function cm_agent_initials($name)
                 <canvas id="concurrencyChart" aria-label="Gráfico de concurrencia de llamadas"></canvas>
             </div>
             <div class="chart-legend">
-                <span class="chart-legend-item"><span class="chart-legend-swatch" style="background:#3b82f6"></span>Llamadas activas</span>
+                <span class="chart-legend-item"><span class="chart-legend-swatch" style="background:#4f6ef7"></span>Llamadas activas</span>
                 <span class="chart-legend-item"><span class="chart-legend-swatch dashed"></span>Promedio (109)</span>
             </div>
         </div>
@@ -132,7 +132,7 @@ function cm_agent_initials($name)
                 <canvas id="queueChart" aria-label="Gráfico de estado de colas"></canvas>
             </div>
             <div class="chart-legend">
-                <span class="chart-legend-item"><span class="chart-legend-swatch" style="background:#3b82f6"></span>Atendidas</span>
+                <span class="chart-legend-item"><span class="chart-legend-swatch" style="background:#4f6ef7"></span>Atendidas</span>
                 <span class="chart-legend-item"><span class="chart-legend-swatch" style="background:#f59e0b"></span>En espera</span>
             </div>
             <div class="queue-callout">

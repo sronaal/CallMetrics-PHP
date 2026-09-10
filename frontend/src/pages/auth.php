@@ -54,8 +54,8 @@ ob_start();
     </span>
 </div>
 
-<h1 class="font-display text-center" style="font-weight:700;font-size:22px;color:#f1f5f9;margin-bottom:6px">Iniciar Sesión</h1>
-<p class="text-center" style="font-size:13px;color:#64748b;margin-bottom:28px">Accede a tu panel de observabilidad PBX</p>
+<h1 class="font-display text-center" style="font-weight:700;font-size:22px;color:#e2e8f0;margin-bottom:6px">Iniciar Sesión</h1>
+<p class="text-center" style="font-size:13px;color:#7a8ba6;margin-bottom:28px">Accede a tu panel de observabilidad PBX</p>
 
 <?php if ($error): ?>
     <div class="alert alert-danger" style="font-size:13px;padding:10px;margin-bottom:16px">

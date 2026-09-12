@@ -10,15 +10,12 @@ INSERT INTO empresas (nombre, nit, email, telefono, plan, activo) VALUES
 -- Usuarios de prueba (password: demo123 para todos)
 -- Hash: $2y$12$KEYQGh5Xd//STipop1vAhe6bAOFr7QRAPOxmtdKBr.WlutBpD6WBu
 INSERT INTO usuarios (tenant_id, nombre, email, password_hash, rol, activo, primer_ingreso) VALUES
--- SUPER_ADMIN global
-(NULL, 'Carlos Admin',    'carlos@admin.com',    '$$CAMBiar_EN_PRODUCCION$$' -- ⚠️ CAMBIAR INMEDIATAMENTE DESPUÉS DEL DEPLOY, 'SUPER_ADMIN', 1, 0),
--- Tenant 1: Alpha
-(1, 'Jorge Mendoza',     'jorge@alpha.com',     '$$CAMBiar_EN_PRODUCCION$$' -- ⚠️ CAMBIAR INMEDIATAMENTE DESPUÉS DEL DEPLOY, 'ADMIN_TENANT', 1, 0),
-(1, 'Ana Supervisora',   'ana@alpha.com',        '$$CAMBiar_EN_PRODUCCION$$' -- ⚠️ CAMBIAR INMEDIATAMENTE DESPUÉS DEL DEPLOY, 'SUPERVISOR', 1, 0),
-(1, 'Pedro Operador',    'pedro@alpha.com',      '$$CAMBiar_EN_PRODUCCION$$' -- ⚠️ CAMBIAR INMEDIATAMENTE DESPUÉS DEL DEPLOY, 'OPERADOR', 1, 1),
--- Tenant 2: Beta
-(2, 'Maria Gerente',     'maria@beta.com',       '$$CAMBiar_EN_PRODUCCION$$' -- ⚠️ CAMBIAR INMEDIATAMENTE DESPUÉS DEL DEPLOY, 'ADMIN_TENANT', 1, 0),
-(2, 'Luis Operador',     'luis@beta.com',        '$$CAMBiar_EN_PRODUCCION$$' -- ⚠️ CAMBIAR INMEDIATAMENTE DESPUÉS DEL DEPLOY, 'OPERADOR', 1, 0);
+(NULL, 'Carlos Admin',    'carlos@admin.com',    '$2y$12$KEYQGh5Xd//STipop1vAhe6bAOFr7QRAPOxmtdKBr.WlutBpD6WBu', 'SUPER_ADMIN', 1, 0),
+(1, 'Jorge Mendoza',     'jorge@alpha.com',     '$2y$12$KEYQGh5Xd//STipop1vAhe6bAOFr7QRAPOxmtdKBr.WlutBpD6WBu', 'ADMIN_TENANT', 1, 0),
+(1, 'Ana Supervisora',   'ana@alpha.com',        '$2y$12$KEYQGh5Xd//STipop1vAhe6bAOFr7QRAPOxmtdKBr.WlutBpD6WBu', 'SUPERVISOR', 1, 0),
+(1, 'Pedro Operador',    'pedro@alpha.com',      '$2y$12$KEYQGh5Xd//STipop1vAhe6bAOFr7QRAPOxmtdKBr.WlutBpD6WBu', 'OPERADOR', 1, 1),
+(2, 'Maria Gerente',     'maria@beta.com',       '$2y$12$KEYQGh5Xd//STipop1vAhe6bAOFr7QRAPOxmtdKBr.WlutBpD6WBu', 'ADMIN_TENANT', 1, 0),
+(2, 'Luis Operador',     'luis@beta.com',        '$2y$12$KEYQGh5Xd//STipop1vAhe6bAOFr7QRAPOxmtdKBr.WlutBpD6WBu', 'OPERADOR', 1, 0);
 
 -- PBX de prueba (tokens hasheados con SHA-256 — nunca almacenar en texto plano)
 -- Token original: callmetrics-agent-token-2026

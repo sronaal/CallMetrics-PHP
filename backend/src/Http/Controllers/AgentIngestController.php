@@ -5,9 +5,10 @@ namespace CallMetrics\Http\Controllers;
 
 use CallMetrics\Core\{Request, Response, Database};
 use CallMetrics\Models\{Pbx, CallRecord, Event, AlertRule};
+use CallMetrics\WebSocket\EventBridge;
 
 /**
- * Controlador de ingesta de datos desde el agente Python.
+ * Controlador de ingesta de datos desde el agente collector.
  *
  * Endpoints:
  *   POST /api/agent/heartbeat   — Heartbeat del agente con estado del PBX
@@ -15,7 +16,14 @@ use CallMetrics\Models\{Pbx, CallRecord, Event, AlertRule};
  *   POST /api/agent/events      — Envio masivo de eventos AMI/CEL
  *   POST /api/agent/metrics     — Metricas de salud del servidor
  *
- * Autenticacion: Token unico por PBX (X-Agent-Token header)
+ * Rutas compatibles (prefijo v1):
+ *   POST /api/v1/agent/heartbeat
+ *   POST /api/v1/agent/cdr
+ *   POST /api/v1/agent/events
+ *   POST /api/v1/agent/metrics
+ *
+ * Autenticacion: UUID unico del agente (X-Agent-ID header)
+ * Compatible con agente Python y agente Spring/Java.
  */
 class AgentIngestController extends Controller
 {
@@ -26,7 +34,7 @@ class AgentIngestController extends Controller
      * Actualiza el estado del PBX y el timestamp de ultimo heartbeat.
      *
      * Headers requeridos:
-     *   X-Agent-Token: Token unico del agente
+     *   X-Agent-ID: UUID del agente collector
      *
      * Body:
      *   {
@@ -68,6 +76,17 @@ class AgentIngestController extends Controller
                 ':contenido' => json_encode($data)
             ]
         );
+
+        // Broadcast estado del PBX a suscriptores del canal pbx_{id}
+        $bridge = EventBridge::getInstance();
+        if ($bridge->isReady()) {
+            $bridge->broadcastPbxHealth((int) $pbx['id'], [
+                'estado' => $data['estado'] ?? 'ONLINE',
+                'uptime' => $data['uptime'] ?? null,
+                'active_channels' => $data['active_channels'] ?? null,
+                'conexion_ami' => $data['conexion_ami'] ?? null,
+            ]);
+        }
 
         Response::ok(['received' => true], 'Heartbeat recibido');
     }
@@ -174,6 +193,28 @@ class AgentIngestController extends Controller
         // Verificar alertas de llamadas perdidas
         $this->checkCallAlerts($pbx['tenant_id'], $pbx['id']);
 
+        // Broadcast cada CDR procesado como call_ended
+        $bridge = EventBridge::getInstance();
+        if ($bridge->isReady()) {
+            foreach ($cdrList as $cdr) {
+                if (empty($cdr['callid'])) continue;
+
+                $bridge->broadcastCallEvent((int) $pbx['tenant_id'], 'call_ended', [
+                    'callid' => $cdr['callid'],
+                    'extension_origen' => $cdr['extension_origen'] ?? null,
+                    'extension_destino' => $cdr['extension_destino'] ?? null,
+                    'numero_origen' => $cdr['numero_origen'] ?? null,
+                    'numero_destino' => $cdr['numero_destino'] ?? null,
+                    'duracion' => $cdr['duracion'] ?? 0,
+                    'billable_seconds' => $cdr['billable_seconds'] ?? 0,
+                    'estado' => $cdr['estado'] ?? 'FAILED',
+                    'inicio_llamada' => $cdr['inicio_llamada'] ?? null,
+                    'fin_llamada' => $cdr['fin_llamada'] ?? null,
+                    'pbx_id' => $pbx['id'],
+                ]);
+            }
+        }
+
         Response::created([
             'inserted' => $inserted,
             'errors' => $errors
@@ -231,6 +272,34 @@ class AgentIngestController extends Controller
             $inserted++;
         }
 
+        // Broadcast eventos AMI relevantes al canal del tenant
+        // Solo eventos de ciclo de vida de llamada se broadcastean (no todos los AMI)
+        $bridge = EventBridge::getInstance();
+        if ($bridge->isReady()) {
+            $callEvents = ['Newchannel', 'Dial', 'Answer', 'Hangup', 'Newcallerid'];
+            foreach ($eventList as $event) {
+                if (empty($event['evento']) || !in_array($event['evento'], $callEvents)) {
+                    continue;
+                }
+
+                // Mapear evento AMI a evento de broadcast
+                $broadcastEvent = match ($event['evento']) {
+                    'Newchannel' => 'call_started',
+                    'Dial' => 'call_ringing',
+                    'Answer' => 'call_answered',
+                    'Hangup' => 'call_ended',
+                    default => 'call_update',
+                };
+
+                $bridge->broadcastCallEvent((int) $pbx['tenant_id'], $broadcastEvent, [
+                    'ami_event' => $event['evento'],
+                    'callid' => $event['callid'] ?? null,
+                    'datos' => $event['contenido'] ?? $event,
+                    'pbx_id' => $pbx['id'],
+                ]);
+            }
+        }
+
         Response::created(['inserted' => $inserted], "$inserted eventos procesados");
     }
 
@@ -271,23 +340,40 @@ class AgentIngestController extends Controller
         // Verificar alertas de CPU/RAM
         $this->checkServerAlerts($pbx['tenant_id'], $data);
 
+        // Broadcast métricas de salud del PBX
+        $bridge = EventBridge::getInstance();
+        if ($bridge->isReady()) {
+            $bridge->broadcastPbxHealth((int) $pbx['id'], [
+                'cpu_usage' => $data['cpu_usage'] ?? null,
+                'memory_usage' => $data['memory_usage'] ?? null,
+                'disk_usage' => $data['disk_usage'] ?? null,
+                'active_channels' => $data['active_channels'] ?? null,
+                'sip_peers_online' => $data['sip_peers_online'] ?? null,
+                'uptime' => $data['uptime'] ?? null,
+            ]);
+        }
+
         Response::ok(['received' => true], 'Metricas recibidas');
     }
 
     /**
-     * Autenticar agente usando token unico por PBX.
+     * Autenticar agente usando UUID único (X-Agent-ID header).
+     *
+     * Compatible con agente Python y agente Spring/Java.
+     * El agente envía su UUID en el header X-Agent-ID.
+     * Se busca el PBX por agente_id (columna unique en tabla pbx).
      */
     private function authenticateAgent(Request $request): ?array
     {
-        $token = $request->header('X-Agent-Token');
-        if (!$token) {
-            Response::unauthorized('Token de agente requerido (X-Agent-Token)');
+        $agenteId = $request->header('X-Agent-ID');
+        if (!$agenteId) {
+            Response::unauthorized('Identificador de agente requerido (X-Agent-ID)');
             return null;
         }
 
-        $pbx = Pbx::findByToken($token);
+        $pbx = Pbx::findByAgenteId($agenteId);
         if (!$pbx) {
-            Response::unauthorized('Token de agente invalido');
+            Response::unauthorized('Agente no registrado: ' . htmlspecialchars($agenteId, ENT_QUOTES));
             return null;
         }
 

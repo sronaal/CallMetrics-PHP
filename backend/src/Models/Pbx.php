@@ -33,6 +33,18 @@ class Pbx extends BaseModel
     }
 
     /**
+     * Buscar un servidor PBX por el UUID del agente collector.
+     * Compatible con agente Python (X-Agent-ID) y agente Spring/Java.
+     *
+     * Usa findBy() que NO aplica filtro de tenant (busqueda cross-tenant).
+     * Esto es intencional: el agente se autenticа por su UUID, no por tenant.
+     */
+    public static function findByAgenteId(string $agenteId): ?array
+    {
+        return parent::findBy('agente_id', $agenteId);
+    }
+
+    /**
      * Contar extensiones registradas en un servidor PBX específico.
      */
     public static function countExtensions(int $pbxId): int

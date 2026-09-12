@@ -49,6 +49,71 @@
         }, 1000);
     }
 
+    /* ---- WebSocket: recibir eventos de llamadas en tiempo real ---- */
+    if (typeof window.CallMetricsWS !== 'undefined') {
+        var tenantIdEl = document.getElementById('cmTenantId');
+        var tenantId = tenantIdEl ? parseInt(tenantIdEl.value, 10) : null;
+        var statusEl = document.getElementById('wsStatusIndicator');
+
+        if (tenantId) {
+            var ws = new CallMetricsWS({ tenantId: tenantId });
+
+            ws.on('call_event', function (data) {
+                var event = data.event || '';
+                var eventData = data.data || {};
+
+                if (event === 'call_started') {
+                    // Incrementar contador de llamadas activas
+                    var kpiCards = document.querySelectorAll('.kpi-card');
+                    if (kpiCards.length > 0) {
+                        var callCountEl = kpiCards[0].querySelector('.kpi-value');
+                        if (callCountEl) {
+                            var current = parseInt(callCountEl.textContent, 10) || 0;
+                            callCountEl.textContent = current + 1;
+                        }
+                    }
+                } else if (event === 'call_ended') {
+                    // Decrementar contador de llamadas activas
+                    var kpiCards = document.querySelectorAll('.kpi-card');
+                    if (kpiCards.length > 0) {
+                        var callCountEl = kpiCards[0].querySelector('.kpi-value');
+                        if (callCountEl) {
+                            var current = parseInt(callCountEl.textContent, 10) || 0;
+                            callCountEl.textContent = Math.max(0, current - 1);
+                        }
+                    }
+                }
+            });
+
+            ws.on('pbx_health', function (data) {
+                // Actualizar indicador de salud del PBX si existe
+                var healthData = data.data || {};
+                console.log('[Dashboard] PBX Health:', healthData);
+            });
+
+            ws.on('connected', function () {
+                if (statusEl) {
+                    statusEl.innerHTML = '<i class="bi bi-circle-fill text-success me-1"></i>En tiempo real';
+                }
+            });
+
+            ws.on('disconnected', function () {
+                if (statusEl) {
+                    statusEl.innerHTML = '<i class="bi bi-circle-fill text-danger me-1"></i>Desconectado';
+                }
+            });
+
+            ws.on('reconnecting', function () {
+                if (statusEl) {
+                    statusEl.innerHTML = '<i class="bi bi-circle-fill text-warning me-1"></i>Reconectando...';
+                }
+            });
+
+            ws.connect();
+            window._cmWS = ws;
+        }
+    }
+
     /* ---- Chart.js init (only if library present) ---- */
     if (typeof window.Chart === 'undefined') return;
 

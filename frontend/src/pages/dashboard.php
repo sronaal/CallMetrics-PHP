@@ -12,6 +12,7 @@ Session::touch();
 $extraCss = [BASE_URL . 'assets/css/dashboard.css'];
 $extraJs = [
     'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js',
+    BASE_URL . 'assets/js/ws-client.js',
     BASE_URL . 'assets/js/dashboard.js',
 ];
 
@@ -76,6 +77,17 @@ function cm_agent_initials($name)
     return $initials !== '' ? $initials : '—';
 }
 ?>
+
+<!-- Tenant ID para WebSocket (oculto) -->
+<?php $sessionUser = Session::user(); ?>
+<input type="hidden" id="cmTenantId" value="<?= (int) ($sessionUser['tenantId'] ?? 0) ?>" />
+
+<!-- Status indicator del WebSocket -->
+<div class="d-flex justify-content-end mb-2">
+    <span id="wsStatusIndicator" class="text-muted small">
+        <i class="bi bi-circle-fill text-secondary me-1"></i>Conectando...
+    </span>
+</div>
 
 <!-- KPI row -->
 <div class="row g-4 mb-4">
@@ -214,7 +226,7 @@ function cm_agent_initials($name)
                                 <td class="cell-dest"><?= htmlspecialchars($call['dest']) ?></td>
                                 <td class="cell-duration <?= $meta['live'] ? 'live' : 'finished' ?>" data-duration="<?= (int) $call['duration'] ?>" data-state="<?= htmlspecialchars($call['status']) ?>"><?= cm_duration($call['duration']) ?></td>
                                 <td>
-                                    <span class="status-pill <?= htmlspecialchars($meta['class']) ?>">
+                                 Test Tenant 6a9fb2bf4f5db   <span class="status-pill <?= htmlspecialchars($meta['class']) ?>">
                                         <i class="bi <?= htmlspecialchars($meta['icon']) ?>"></i>
                                         <?= htmlspecialchars($call['status']) ?>
                                     </span>

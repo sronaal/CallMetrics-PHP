@@ -15,12 +15,14 @@ CREATE TABLE IF NOT EXISTS pbx (
     puerto_http     INT DEFAULT 80,
     tipo            ENUM('ASTERISK','FREPBX','OTRO') DEFAULT 'ASTERISK',
     version         VARCHAR(20) DEFAULT NULL,
-    token_agente    VARCHAR(255) NOT NULL, -- Token único para autenticar agente
+    token_agente    VARCHAR(255) NOT NULL, -- Token único para autenticar agente (SHA-256 hash)
+    agente_id       VARCHAR(36) DEFAULT NULL, -- UUID del agente collector (X-Agent-ID header)
     estado          ENUM('ONLINE','OFFLINE','ERROR') DEFAULT 'OFFLINE',
     ultimo_heartbeat DATETIME DEFAULT NULL,
     activo          TINYINT(1) DEFAULT 1,
     created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_pbx_agente_id (agente_id),
     INDEX idx_pbx_tenant (tenant_id),
     INDEX idx_pbx_estado (estado),
     CONSTRAINT fk_pbx_tenant FOREIGN KEY (tenant_id) REFERENCES empresas(id) ON DELETE CASCADE

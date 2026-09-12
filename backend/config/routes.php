@@ -80,4 +80,10 @@ return [
     ['POST',   '/api/agent/cdr',          'AgentIngestController@cdr',       false],
     ['POST',   '/api/agent/events',       'AgentIngestController@events',    false],
     ['POST',   '/api/agent/metrics',      'AgentIngestController@metrics',   false],
+
+    // Agent Ingestion routes — v1 prefix (compatible with Python agent & Spring agent)
+    ['POST',   '/api/v1/agent/heartbeat', 'AgentIngestController@heartbeat', false],
+    ['POST',   '/api/v1/agent/cdr',       'AgentIngestController@cdr',       false],
+    ['POST',   '/api/v1/agent/events',    'AgentIngestController@events',    false],
+    ['POST',   '/api/v1/agent/metrics',   'AgentIngestController@metrics',   false],
 ];

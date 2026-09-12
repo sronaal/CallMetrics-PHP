@@ -17,6 +17,7 @@ use Ratchet\Server\IoServer;
 use Ratchet\Http\HttpServer;
 use Ratchet\WebSocket\WsServer;
 use CallMetrics\WebSocket\Server;
+use CallMetrics\WebSocket\EventBridge;
 
 // Cargar variables de entorno
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
@@ -32,10 +33,16 @@ echo "Escuchando en $host:$port\n";
 echo "Presiona Ctrl+C para detener\n";
 echo "===========================================\n\n";
 
+$wsServer = new Server();
+
+// Inicializar el puente HTTP → WebSocket
+// Permite que los controladores hagan broadcast después de procesar eventos del agente
+EventBridge::init($wsServer);
+
 $server = IoServer::factory(
     new HttpServer(
         new WsServer(
-            new Server()
+            $wsServer
         )
     ),
     $port,

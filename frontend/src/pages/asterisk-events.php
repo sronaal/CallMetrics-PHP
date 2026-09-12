@@ -1,12 +1,13 @@
 <?php
 require_once __DIR__ . '/../config.php';
+require_once SRC_PATH . '/core/Session.php';
 require_once SRC_PATH . '/data/mock.php';
 require_once SRC_PATH . '/components/components.php';
 
 $title = 'Eventos Asterisk';
 $activeNav = 'events';
 $extraCss = [BASE_URL . 'assets/css/dashboard.css', BASE_URL . 'assets/css/pages.css'];
-$extraJs = [BASE_URL . 'assets/js/events.js'];
+$extraJs = [BASE_URL . 'assets/js/ws-client.js', BASE_URL . 'assets/js/events.js'];
 
 ob_start();
 
@@ -52,8 +53,17 @@ $basePaginacion = BASE_URL . 'asterisk-events.php?severidad=' . rawurlencode($fS
 
 <div class="page-header d-flex align-items-center justify-content-between mb-3">
     <h2 class="h4 mb-0">Eventos Asterisk</h2>
-    <span class="text-muted"><?= $total ?> evento<?= $total === 1 ? '' : 's' ?> en el stream</span>
+    <div class="d-flex align-items-center gap-3">
+        <span id="wsStatusIndicator" class="text-muted small">
+            <i class="bi bi-circle-fill text-secondary me-1"></i>Conectando...
+        </span>
+        <span class="text-muted"><?= $total ?> evento<?= $total === 1 ? '' : 's' ?> en el stream</span>
+    </div>
 </div>
+
+<!-- Tenant ID para WebSocket (oculto) -->
+<?php $sessionUser = Session::user(); ?>
+<input type="hidden" id="cmTenantId" value="<?= (int) ($sessionUser['tenantId'] ?? 0) ?>" />
 
 <!-- Filtros: severidad / tipo / PBX (recarga servidor; sin JS obligatorio) -->
 <form class="row g-2 mb-3" method="get" action="<?= BASE_URL ?>asterisk-events.php">

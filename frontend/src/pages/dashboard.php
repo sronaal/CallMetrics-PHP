@@ -226,7 +226,7 @@ function cm_agent_initials($name)
                                 <td class="cell-dest"><?= htmlspecialchars($call['dest']) ?></td>
                                 <td class="cell-duration <?= $meta['live'] ? 'live' : 'finished' ?>" data-duration="<?= (int) $call['duration'] ?>" data-state="<?= htmlspecialchars($call['status']) ?>"><?= cm_duration($call['duration']) ?></td>
                                 <td>
-                                 Test Tenant 6a9fb2bf4f5db   <span class="status-pill <?= htmlspecialchars($meta['class']) ?>">
+                                <span class="status-pill <?= htmlspecialchars($meta['class']) ?>">
                                         <i class="bi <?= htmlspecialchars($meta['icon']) ?>"></i>
                                         <?= htmlspecialchars($call['status']) ?>
                                     </span>

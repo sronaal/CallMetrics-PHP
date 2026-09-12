@@ -1,22 +1,54 @@
 <?php
 require_once __DIR__ . '/../../config.php';
 require_once SRC_PATH . '/data/mock.php';
+require_once SRC_PATH . '/core/ApiClient.php';
 require_once SRC_PATH . '/components/components.php';
 
 $title = 'Agentes Call Center';
 $activeNav = 'cc-agentes';
 $ccLayout = true;
 $extraCss = [BASE_URL . 'assets/css/dashboard.css', BASE_URL . 'assets/css/pages.css', BASE_URL . 'assets/css/callcenter.css'];
-$extraJs = [BASE_URL . 'assets/js/cc.js'];
+$extraJs = [BASE_URL . 'assets/js/ws-client.js', BASE_URL . 'assets/js/cc.js'];
 
 ob_start();
 
-$agentes = cm_agentes_cc();
-$colas = cm_colas_cc();
+/* ---- Data source: API with mock fallback ---- */
+$client = ApiClient::getInstance();
+$apiAgentes = $client->get('/agentes', ['page' => 0, 'size' => 1000]);
+$useApi = !empty($apiAgentes['success']) && isset($apiAgentes['data']) && is_array($apiAgentes['data']);
+
+$agentes = [];
 $mapaColas = [];
-foreach ($colas as $col) {
-    $mapaColas[$col['id']] = $col['nombre'];
+
+if ($useApi) {
+    /* Fetch colas for name resolution */
+    $apiColas = $client->get('/colas', ['page' => 0, 'size' => 100]);
+    if (!empty($apiColas['success']) && isset($apiColas['data'])) {
+        foreach ($apiColas['data'] as $c) { $mapaColas[$c['id']] = $c['nombre']; }
+    }
+    /* Fetch extensions for number resolution */
+    $apiExt = $client->get('/extensiones', ['page' => 0, 'size' => 100]);
+    $mapaExt = [];
+    if (!empty($apiExt['success']) && isset($apiExt['data'])) {
+        foreach ($apiExt['data'] as $e) { $mapaExt[$e['id']] = $e['numero']; }
+    }
+    /* Map DB estado → frontend estado */
+    $estadoMap = ['DISPONIBLE' => 'active', 'EN_LLAMADA' => 'on-call', 'OCUPADO' => 'break', 'DESCONECTADO' => 'offline'];
+    foreach ($apiAgentes['data'] as $a) {
+        $agentes[] = [
+            'id' => $a['id'], 'nombre' => $a['nombre'],
+            'extension' => $mapaExt[$a['extension_id']] ?? (string) ($a['extension_id'] ?? ''),
+            'cola_id' => $a['cola_id'] ?? null,
+            'estado' => $estadoMap[$a['estado']] ?? strtolower($a['estado'] ?? 'offline'),
+            'tiempo_estado' => 0, 'llamadas_hoy' => $a['llamadas_atendidas'] ?? 0, 'espera_max' => 0,
+        ];
+    }
+} else {
+    $agentes = cm_agentes_cc();
+    $colas = cm_colas_cc();
+    foreach ($colas as $col) { $mapaColas[$col['id']] = $col['nombre']; }
 }
+
 $total = count($agentes);
 $disponibles = count(array_filter($agentes, fn($a) => $a['estado'] === 'active'));
 

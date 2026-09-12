@@ -1,31 +1,109 @@
 <?php
 require_once __DIR__ . '/../../config.php';
 require_once SRC_PATH . '/data/mock.php';
+require_once SRC_PATH . '/core/ApiClient.php';
 require_once SRC_PATH . '/components/components.php';
 
 $title = 'Registro de Llamadas (CDR)';
 $activeNav = 'cdr';
 $ccLayout = true;
 $extraCss = [BASE_URL . 'assets/css/dashboard.css', BASE_URL . 'assets/css/pages.css', BASE_URL . 'assets/css/callcenter.css'];
-$extraJs = [BASE_URL . 'assets/js/cdr.js'];
+$extraJs = [BASE_URL . 'assets/js/ws-client.js', BASE_URL . 'assets/js/cdr.js'];
 
 ob_start();
 
-$cdr = cm_cdr();
-$colas = cm_colas_cc();
-$agentesCc = cm_agentes_cc();
-$reportes = cm_reportes_diarios();
-
-/* Filtros de fecha (desde/hasta, YYYY-MM-DD) */
+/* ---- Data source: API with mock fallback ---- */
+$client = ApiClient::getInstance();
 $desde = trim((string) ($_GET['desde'] ?? ''));
 $hasta = trim((string) ($_GET['hasta'] ?? ''));
-if ($desde !== '') {
-    $tsDesde = strtotime($desde);
-    if ($tsDesde) { $cdr = array_values(array_filter($cdr, fn($c) => (int) $c['fecha'] >= $tsDesde)); }
-}
-if ($hasta !== '') {
-    $tsHasta = strtotime($hasta . ' 23:59:59');
-    if ($tsHasta) { $cdr = array_values(array_filter($cdr, fn($c) => (int) $c['fecha'] <= $tsHasta)); }
+
+$apiParams = ['page' => 0, 'size' => 1000];
+if ($desde !== '') $apiParams['fecha_inicio'] = $desde . ' 00:00:00';
+if ($hasta !== '') $apiParams['fecha_fin'] = $hasta . ' 23:59:59';
+
+$apiCdr = $client->get('/llamadas', $apiParams);
+$useApi = !empty($apiCdr['success']) && isset($apiCdr['data']) && is_array($apiCdr['data']);
+
+$cdr = [];
+$colas = [];
+$agentesCc = [];
+$reportes = cm_reportes_diarios();
+
+if ($useApi) {
+    /* Fetch agents, colas, extensions for name resolution */
+    $apiAgentes = $client->get('/agentes', ['page' => 0, 'size' => 1000]);
+    $apiColasResult = $client->get('/colas', ['page' => 0, 'size' => 100]);
+    $apiExt = $client->get('/extensiones', ['page' => 0, 'size' => 100]);
+
+    $mapaExt = [];
+    if (!empty($apiExt['success']) && isset($apiExt['data'])) {
+        foreach ($apiExt['data'] as $e) { $mapaExt[$e['id']] = $e['numero']; }
+    }
+
+    $mapaExtAgente = [];
+    $estadoMapAgent = ['DISPONIBLE' => 'active', 'EN_LLAMADA' => 'on-call', 'OCUPADO' => 'break', 'DESCONECTADO' => 'offline'];
+    if (!empty($apiAgentes['success']) && isset($apiAgentes['data'])) {
+        foreach ($apiAgentes['data'] as $a) {
+            $extNum = $mapaExt[$a['extension_id']] ?? (string) ($a['extension_id'] ?? '');
+            if ($extNum) {
+                $mapaExtAgente[$extNum] = ['nombre' => $a['nombre'], 'cola_id' => $a['cola_id'] ?? null];
+            }
+            $agentesCc[] = [
+                'id' => $a['id'], 'nombre' => $a['nombre'], 'extension' => $extNum,
+                'cola_id' => $a['cola_id'] ?? null,
+                'estado' => $estadoMapAgent[$a['estado']] ?? strtolower($a['estado'] ?? 'offline'),
+            ];
+        }
+    }
+
+    $mapaColas = [];
+    if (!empty($apiColasResult['success']) && isset($apiColasResult['data'])) {
+        foreach ($apiColasResult['data'] as $c) {
+            $mapaColas[$c['id']] = $c['nombre'];
+            $estadoMapCola = ['ACTIVA' => 'active', 'PAUSADA' => 'paused', 'INACTIVA' => 'inactive'];
+            $colas[] = [
+                'id' => $c['id'], 'nombre' => $c['nombre'],
+                'en_espera' => $c['llamadas_enespera'] ?? 0,
+                'nivel_servicio_pct' => 0, 'llamadas_hora' => 0,
+                'estado' => $estadoMapCola[$c['estado']] ?? strtolower($c['estado'] ?? 'inactive'),
+                'espera_max' => 0,
+            ];
+        }
+    }
+
+    $estadoMapCdr = ['ANSWERED' => 'answered', 'NOANSWER' => 'abandoned', 'BUSY' => 'busy', 'FAILED' => 'failed', 'CANCELLED' => 'cancelled'];
+    foreach ($apiCdr['data'] as $r) {
+        $extOrig = $r['extension_origen'] ?? '';
+        $agenteNombre = '—';
+        $colaNombre = '—';
+        if ($extOrig && isset($mapaExtAgente[$extOrig])) {
+            $agenteNombre = $mapaExtAgente[$extOrig]['nombre'];
+            $colaId = $mapaExtAgente[$extOrig]['cola_id'];
+            if ($colaId && isset($mapaColas[$colaId])) { $colaNombre = $mapaColas[$colaId]; }
+        }
+        $cdr[] = [
+            'id' => $r['id'],
+            'fecha' => strtotime($r['inicio_llamada'] ?? 'now'),
+            'origen' => $r['numero_origen'] ?? '',
+            'destino' => $r['numero_destino'] ?? '',
+            'cola' => $colaNombre,
+            'agente' => $agenteNombre,
+            'duracion' => $r['duracion'] ?? 0,
+            'resultado' => $estadoMapCdr[$r['estado']] ?? strtolower($r['estado'] ?? 'unknown'),
+        ];
+    }
+} else {
+    $cdr = cm_cdr();
+    $colas = cm_colas_cc();
+    $agentesCc = cm_agentes_cc();
+    if ($desde !== '') {
+        $tsDesde = strtotime($desde);
+        if ($tsDesde) { $cdr = array_values(array_filter($cdr, fn($c) => (int) $c['fecha'] >= $tsDesde)); }
+    }
+    if ($hasta !== '') {
+        $tsHasta = strtotime($hasta . ' 23:59:59');
+        if ($tsHasta) { $cdr = array_values(array_filter($cdr, fn($c) => (int) $c['fecha'] <= $tsHasta)); }
+    }
 }
 
 /* Métricas del header */

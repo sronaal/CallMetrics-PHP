@@ -1,17 +1,41 @@
 <?php
 require_once __DIR__ . '/../../config.php';
 require_once SRC_PATH . '/data/mock.php';
+require_once SRC_PATH . '/core/ApiClient.php';
 require_once SRC_PATH . '/components/components.php';
 
 $title = 'Colas';
 $activeNav = 'colas';
 $ccLayout = true;
 $extraCss = [BASE_URL . 'assets/css/dashboard.css', BASE_URL . 'assets/css/pages.css', BASE_URL . 'assets/css/callcenter.css'];
-$extraJs = [BASE_URL . 'assets/js/cc.js'];
+$extraJs = [BASE_URL . 'assets/js/ws-client.js', BASE_URL . 'assets/js/cc.js'];
 
 ob_start();
 
-$colas = cm_colas_cc();
+/* ---- Data source: API with mock fallback ---- */
+$client = ApiClient::getInstance();
+$apiColas = $client->get('/colas', ['page' => 0, 'size' => 1000]);
+$useApi = !empty($apiColas['success']) && isset($apiColas['data']) && is_array($apiColas['data']);
+
+$colas = [];
+
+if ($useApi) {
+    /* Map DB estado → frontend estado */
+    $estadoMap = ['ACTIVA' => 'active', 'PAUSADA' => 'paused', 'INACTIVA' => 'inactive'];
+    foreach ($apiColas['data'] as $c) {
+        $colas[] = [
+            'id' => $c['id'], 'nombre' => $c['nombre'],
+            'en_espera' => $c['llamadas_enespera'] ?? 0,
+            'nivel_servicio_pct' => 0,
+            'llamadas_hora' => 0,
+            'estado' => $estadoMap[$c['estado']] ?? strtolower($c['estado'] ?? 'inactive'),
+            'espera_max' => 0,
+        ];
+    }
+} else {
+    $colas = cm_colas_cc();
+}
+
 $total = count($colas);
 $activas = count(array_filter($colas, fn($q) => in_array($q['estado'], ['active', 'overflow'], true)));
 

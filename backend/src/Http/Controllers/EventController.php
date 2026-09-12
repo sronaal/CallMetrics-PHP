@@ -35,7 +35,6 @@ class EventController extends Controller
             if (is_string($ev['contenido'])) {
                 $ev['contenido'] = json_decode($ev['contenido'], true);
             }
-            unset($ev['created_at']);
         }
 
         Response::paginated($result['data'], $page, $size, $result['total']);

@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config.php';
 require_once SRC_PATH . '/data/mock.php';
+require_once SRC_PATH . '/core/ApiClient.php';
 require_once SRC_PATH . '/components/components.php';
 
 $title = 'Agentes';
@@ -10,8 +11,35 @@ $extraJs = [];
 
 ob_start();
 
-/* ---------------- Datos ---------------- */
-$agentes = cm_agentes();
+/* ---- Data source: API with mock fallback ---- */
+$client = ApiClient::getInstance();
+$apiAgentes = $client->get('/agentes', ['page' => 0, 'size' => 1000]);
+$useApi = !empty($apiAgentes['success']) && isset($apiAgentes['data']) && is_array($apiAgentes['data']);
+
+$agentes = [];
+
+if ($useApi) {
+    /* Fetch extensions for number resolution */
+    $apiExt = $client->get('/extensiones', ['page' => 0, 'size' => 100]);
+    $mapaExt = [];
+    if (!empty($apiExt['success']) && isset($apiExt['data'])) {
+        foreach ($apiExt['data'] as $e) { $mapaExt[$e['id']] = $e['numero']; }
+    }
+    $estadoMap = ['DISPONIBLE' => 'active', 'EN_LLAMADA' => 'on-call', 'OCUPADO' => 'break', 'DESCONECTADO' => 'offline'];
+    $now = time();
+    foreach ($apiAgentes['data'] as $a) {
+        $agentes[] = [
+            'id' => $a['id'], 'nombre' => $a['nombre'],
+            'extension' => $mapaExt[$a['extension_id']] ?? (string) ($a['extension_id'] ?? ''),
+            'estado' => $estadoMap[$a['estado']] ?? strtolower($a['estado'] ?? 'offline'),
+            'ultima_actividad' => strtotime($a['created_at'] ?? 'now'),
+            'heartbeat' => strtotime($a['created_at'] ?? 'now'),
+        ];
+    }
+} else {
+    $agentes = cm_agentes();
+}
+
 $q = trim((string) ($_GET['q'] ?? ''));
 if ($q !== '') {
     $agentes = array_filter($agentes, function ($a) use ($q) {

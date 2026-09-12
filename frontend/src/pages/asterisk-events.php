@@ -1,8 +1,15 @@
 <?php
 require_once __DIR__ . '/../config.php';
-require_once SRC_PATH . '/core/Session.php';
+require_once __DIR__ . '/../core/Config.php';
+require_once __DIR__ . '/../core/Session.php';
+require_once __DIR__ . '/../core/ApiClient.php';
+require_once __DIR__ . '/../core/AuthMiddleware.php';
+require_once __DIR__ . '/../core/ApiClientHelpers.php';
 require_once SRC_PATH . '/data/mock.php';
 require_once SRC_PATH . '/components/components.php';
+
+AuthMiddleware::check();
+Session::touch();
 
 $title = 'Eventos Asterisk';
 $activeNav = 'events';
@@ -11,42 +18,113 @@ $extraJs = [BASE_URL . 'assets/js/ws-client.js', BASE_URL . 'assets/js/events.js
 
 ob_start();
 
-/* ---------------- Datos + filtros ---------------- */
-$eventos = cm_eventos();
-
+/* ---------------- Filtros GET ---------------- */
 $fSeveridad = (string) ($_GET['severidad'] ?? '');
 $fTipo = (string) ($_GET['tipo'] ?? '');
 $fPbx = (string) ($_GET['pbx'] ?? '');
 
+/* ---------------- PBX lookup map ---------------- */
+$pbxResponse = api_get_pbx(0, 100);
+$pbxList = $pbxResponse['data'] ?? [];
+$pbxMap = [];
+$pbxNameToId = [];
+foreach ($pbxList as $p) {
+    $id = (int) ($p['id'] ?? 0);
+    $nombre = $p['nombre'] ?? ('PBX-' . $id);
+    $pbxMap[$id] = $nombre;
+    $pbxNameToId[$nombre] = $id;
+}
+
+/* ---------------- Fetch eventos from API ---------------- */
+$filters = [];
+if ($fTipo !== '') {
+    $filters['tipo'] = $fTipo;
+}
+if ($fPbx !== '' && isset($pbxNameToId[$fPbx])) {
+    $filters['pbx_id'] = $pbxNameToId[$fPbx];
+}
+
+$response = api_get_eventos(0, 100, $filters);
+$apiData = $response['data'] ?? [];
+$apiTotal = $response['meta']['total'] ?? count($apiData);
+
+/* ---------------- Helpers ---------------- */
+/**
+ * Derivar severidad a partir de tipo, nombre de evento y contenido.
+ * La tabla eventos no tiene columna severidad; se infiere del contexto.
+ */
+function cm_derive_severity(string $tipo, string $evento, $contenido): string
+{
+    if (is_array($contenido)) {
+        if (isset($contenido['error'])) {
+            return 'error';
+        }
+        if (isset($contenido['reason']) && stripos((string) $contenido['reason'], 'fail') !== false) {
+            return 'error';
+        }
+    }
+    $warningEvents = ['Hangup', 'QueueCallerAbandon'];
+    if (in_array($evento, $warningEvents, true)) {
+        return 'warning';
+    }
+    if ($tipo === 'SYSTEM') {
+        return 'warning';
+    }
+    return 'info';
+}
+
+/* ---------------- Map API → formato de display ---------------- */
+$eventos = array_map(function ($ev) use ($pbxMap) {
+    $ts = 0;
+    if (!empty($ev['created_at'])) {
+        $ts = (int) strtotime($ev['created_at']);
+    }
+    $contenido = $ev['contenido'] ?? [];
+    if (is_string($contenido)) {
+        $contenido = json_decode($contenido, true) ?? [];
+    }
+    return [
+        'id'         => (int) $ev['id'],
+        'timestamp'  => $ts,
+        'severidad'  => cm_derive_severity($ev['tipo'] ?? '', $ev['evento'] ?? '', $contenido),
+        'tipo'       => $ev['tipo'] ?? '',
+        'pbx'        => $pbxMap[(int) ($ev['pbx_id'] ?? 0)] ?? ('PBX-' . ($ev['pbx_id'] ?? '?')),
+        'evento'     => $ev['evento'] ?? '',
+        'payload'    => $contenido,
+    ];
+}, $apiData);
+
+/* ---------------- Severity filter (PHP-side, la API no lo soporta) ---------------- */
 if ($fSeveridad !== '') {
     $eventos = array_filter($eventos, fn($e) => $e['severidad'] === $fSeveridad);
+    $eventos = array_values($eventos);
 }
-if ($fTipo !== '') {
-    $eventos = array_filter($eventos, fn($e) => $e['tipo'] === $fTipo);
-}
-if ($fPbx !== '') {
-    $eventos = array_filter($eventos, fn($e) => $e['pbx'] === $fPbx);
-}
-$eventos = array_values($eventos);
-/* Más recientes primero (el stream siempre muestra lo último arriba). */
-usort($eventos, fn($a, $b) => (int) $b['timestamp'] <=> (int) $a['timestamp']);
 
-/* Opciones de filtro derivadas del mock (sin duplicar datos). */
-$tipos = [];
-$pbxDisponibles = [];
-foreach (cm_eventos() as $e) {
-    $tipos[$e['tipo']] = true;
-    $pbxDisponibles[$e['pbx']] = true;
-}
-ksort($tipos);
-ksort($pbxDisponibles);
-$severidades = ['info', 'warning', 'error'];
+/* ---------------- Orden: más recientes primero ---------------- */
+usort($eventos, fn($a, $b) => $b['timestamp'] <=> $a['timestamp']);
 
+/* ---------------- Paginación ---------------- */
 $total = count($eventos);
 $page = max(1, (int) ($_GET['page'] ?? 1));
 $per = 10;
 $pages = (int) ceil($total / $per);
 $rows = array_slice($eventos, ($page - 1) * $per, $per);
+
+/* ---------------- Opciones de filtro ---------------- */
+$tipos = [];
+$pbxDisponibles = [];
+foreach ($eventos as $e) {
+    $tipos[$e['tipo']] = true;
+    $pbxDisponibles[$e['pbx']] = true;
+}
+foreach ($pbxList as $p) {
+    $nombre = $p['nombre'] ?? ('PBX-' . $p['id']);
+    $pbxDisponibles[$nombre] = true;
+}
+ksort($tipos);
+ksort($pbxDisponibles);
+$severidades = ['info', 'warning', 'error'];
+
 $basePaginacion = BASE_URL . 'asterisk-events.php?severidad=' . rawurlencode($fSeveridad)
     . '&tipo=' . rawurlencode($fTipo) . '&pbx=' . rawurlencode($fPbx) . '&';
 ?>

@@ -37,26 +37,41 @@ $kpiList = [
     ['label' => 'Agentes', 'icon' => 'bi-people', 'iconColor' => '#4f6ef7', 'iconBg' => 'rgba(79,110,247,0.14)', 'value' => ($stats['agentesActivos'] ?? '89') . '/' . ($stats['agentesTotal'] ?? '120'), 'subtitle' => 'conectados / total', 'trend' => 'estable', 'trendClass' => 'neutral'],
 ];
 
-$alertsList = [
-    ['severity' => 'critical', 'icon' => 'bi-exclamation-octagon-fill', 'message' => 'Cola Ventas saturada — 31 llamadas en espera', 'time' => 'Hace 2 min', 'pbx' => 'PBX-1', 'source' => 'Queue Monitor'],
-    ['severity' => 'high', 'icon' => 'bi-exclamation-triangle-fill', 'message' => 'CPU PBX 2 al 91% — umbral superado (límite: 80%)', 'time' => 'Hace 5 min', 'pbx' => 'PBX-2', 'source' => 'System Health'],
-    ['severity' => 'medium', 'icon' => 'bi-exclamation-triangle-fill', 'message' => 'Latencia SIP elevada: 340ms promedio (normal <150ms)', 'time' => 'Hace 12 min', 'pbx' => 'PBX-1', 'source' => 'SIP Monitor'],
-    ['severity' => 'high', 'icon' => 'bi-exclamation-triangle-fill', 'message' => 'Agente "Pedro G." sin respuesta — 5 llamadas perdidas', 'time' => 'Hace 18 min', 'pbx' => 'PBX-3', 'source' => 'Agent Monitor'],
-    ['severity' => 'low', 'icon' => 'bi-info-circle', 'message' => 'Nuevo tronco SIP registrado: trunk-mx-01', 'time' => 'Hace 34 min', 'pbx' => 'PBX-2', 'source' => 'SIP Registry'],
-];
+// Fetch active alerts from API
+$alertsResponse = api_get_alertas(0, 50);
+$alertsData = $alertsResponse['data'] ?? [];
+$alertsList = [];
+foreach ($alertsData as $alert) {
+    $sev = strtolower($alert['severidad'] ?? 'info');
+    $icons = ['critical' => 'bi-exclamation-octagon-fill', 'high' => 'bi-exclamation-triangle-fill', 'medium' => 'bi-exclamation-triangle-fill', 'low' => 'bi-info-circle'];
+    $alertsList[] = [
+        'severity' => $sev,
+        'icon' => $icons[$sev] ?? 'bi-info-circle',
+        'message' => ($alert['nombre'] ?? 'Alerta') . ($alert['umbral'] ? ' — umbral: ' . $alert['umbral'] : ''),
+        'time' => '',
+        'pbx' => '',
+        'source' => $alert['metrica'] ?? 'System',
+    ];
+}
+$alertsCount = count($alertsList);
+$criticalCount = count(array_filter($alertsList, fn($a) => $a['severity'] === 'critical'));
+$highCount = count(array_filter($alertsList, fn($a) => $a['severity'] === 'high'));
 
-$callsList = [
-    ['origin' => '+34 612 345 678', 'dest' => 'Cola Ventas', 'duration' => 272, 'status' => 'Activa', 'agent' => 'Carlos M.', 'pbx' => 'PBX-1'],
-    ['origin' => '+1 555 234 5678', 'dest' => 'Cola Soporte', 'duration' => 767, 'status' => 'En espera', 'agent' => null, 'pbx' => 'PBX-2'],
-    ['origin' => '+34 654 789 012', 'dest' => 'Ext. 1042', 'duration' => 135, 'status' => 'Activa', 'agent' => 'Ana R.', 'pbx' => 'PBX-1'],
-    ['origin' => '+44 7700 123456', 'dest' => 'Cola Ventas', 'duration' => 45, 'status' => 'Grabando', 'agent' => 'Miguel F.', 'pbx' => 'PBX-1'],
-    ['origin' => '+34 699 876 543', 'dest' => 'Cola Postventa', 'duration' => 438, 'status' => 'Transferida', 'agent' => 'Laura P.', 'pbx' => 'PBX-3'],
-    ['origin' => '+52 55 1234 5678', 'dest' => 'Cola Cobranza', 'duration' => 89, 'status' => 'Activa', 'agent' => 'Roberto K.', 'pbx' => 'PBX-2'],
-    ['origin' => '+34 611 222 333', 'dest' => 'Ext. 2015', 'duration' => 512, 'status' => 'Activa', 'agent' => 'Sandra V.', 'pbx' => 'PBX-1'],
-    ['origin' => '+1 800 555 0199', 'dest' => 'Cola Soporte', 'duration' => 34, 'status' => 'En espera', 'agent' => null, 'pbx' => 'PBX-2'],
-    ['origin' => '+34 678 901 234', 'dest' => 'Cola Ventas', 'duration' => 198, 'status' => 'Grabando', 'agent' => 'Elena B.', 'pbx' => 'PBX-3'],
-    ['origin' => '+49 30 1234567', 'dest' => 'Ext. 3087', 'duration' => 65, 'status' => 'Activa', 'agent' => 'Pablo T.', 'pbx' => 'PBX-1'],
-];
+// Fetch active calls from API (llamadas_cdr with fin_llamada IS NULL)
+$callsResponse = api_get_llamadas(0, 50);
+$callsData = $callsResponse['data'] ?? [];
+$callsList = [];
+foreach ($callsData as $call) {
+    if (!empty($call['fin_llamada'])) continue;
+    $callsList[] = [
+        'origin' => $call['numero_origen'] ?? '',
+        'dest' => $call['numero_destino'] ?? '',
+        'duration' => (int)($call['duracion'] ?? 0),
+        'status' => 'Activa',
+        'agent' => null,
+        'pbx' => $call['pbx_nombre'] ?? '',
+    ];
+}
 
 $statusMeta = [
     'Activa' => ['class' => 'activa', 'icon' => 'bi-telephone-inbound', 'live' => true],
@@ -162,14 +177,19 @@ function cm_agent_initials($name)
             <div class="dash-card-header">
                 <div>
                     <h2 class="dash-card-title">Alertas Activas</h2>
-                    <p class="dash-card-subtitle">5 sin resolver</p>
+                    <p class="dash-card-subtitle"><?= $alertsCount ?> sin resolver</p>
                 </div>
                 <div class="d-flex gap-2">
-                    <span class="severity-chip critical">1 crítica</span>
-                    <span class="severity-chip high">2 altas</span>
+                    <?php if ($criticalCount > 0): ?>
+                        <span class="severity-chip critical"><?= $criticalCount ?> crítica<?= $criticalCount !== 1 ? 's' : '' ?></span>
+                    <?php endif; ?>
+                    <?php if ($highCount > 0): ?>
+                        <span class="severity-chip high"><?= $highCount ?> alta<?= $highCount !== 1 ? 's' : '' ?></span>
+                    <?php endif; ?>
                 </div>
             </div>
 
+            <?php if ($alertsList): ?>
             <ul class="alerts-list">
                 <?php foreach ($alertsList as $alert): ?>
                     <li class="alert-row sev-<?= htmlspecialchars($alert['severity']) ?>">
@@ -177,8 +197,12 @@ function cm_agent_initials($name)
                         <div>
                             <div class="alert-row-msg"><?= htmlspecialchars($alert['message']) ?></div>
                             <div class="alert-row-meta">
-                                <span class="alert-row-time"><?= htmlspecialchars($alert['time']) ?></span>
-                                <span class="alert-pbx-chip"><?= htmlspecialchars($alert['pbx']) ?></span>
+                                <?php if ($alert['time']): ?>
+                                    <span class="alert-row-time"><?= htmlspecialchars($alert['time']) ?></span>
+                                <?php endif; ?>
+                                <?php if ($alert['pbx']): ?>
+                                    <span class="alert-pbx-chip"><?= htmlspecialchars($alert['pbx']) ?></span>
+                                <?php endif; ?>
                                 <span class="alert-row-source"><?= htmlspecialchars($alert['source']) ?></span>
                             </div>
                         </div>
@@ -186,6 +210,11 @@ function cm_agent_initials($name)
                     </li>
                 <?php endforeach; ?>
             </ul>
+            <?php else: ?>
+            <div class="text-center text-muted py-4">
+                <i class="bi bi-check-circle me-1"></i>No hay alertas activas
+            </div>
+            <?php endif; ?>
 
             <div class="alerts-footer">
                 <a href="#">Ver historial completo →</a>
@@ -198,7 +227,7 @@ function cm_agent_initials($name)
             <div class="dash-card-header">
                 <div>
                     <h2 class="dash-card-title">Llamadas en Tiempo Real</h2>
-                    <p class="dash-card-subtitle">10 llamadas activas</p>
+                    <p class="dash-card-subtitle"><?= count($callsList) ?> llamada<?= count($callsList) !== 1 ? 's' : '' ?> activa<?= count($callsList) !== 1 ? 's' : '' ?></p>
                 </div>
                 <div class="dash-live-badge">
                     <span class="dash-live-dot"></span>
@@ -219,8 +248,9 @@ function cm_agent_initials($name)
                         </tr>
                     </thead>
                     <tbody id="liveCallsRows">
+                        <?php if ($callsList): ?>
                         <?php foreach ($callsList as $call): ?>
-                            <?php $meta = $statusMeta[$call['status']]; ?>
+                            <?php $meta = $statusMeta[$call['status']] ?? $statusMeta['Activa']; ?>
                             <tr>
                                 <td class="cell-origin"><?= htmlspecialchars($call['origin']) ?></td>
                                 <td class="cell-dest"><?= htmlspecialchars($call['dest']) ?></td>
@@ -244,6 +274,9 @@ function cm_agent_initials($name)
                                 <td><span class="cell-pbx"><?= htmlspecialchars($call['pbx']) ?></span></td>
                             </tr>
                         <?php endforeach; ?>
+                        <?php else: ?>
+                        <tr><td colspan="6" class="text-center text-muted py-4">No hay llamadas en tiempo real</td></tr>
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>

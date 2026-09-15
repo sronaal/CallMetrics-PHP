@@ -3,11 +3,12 @@ require_once __DIR__ . '/../../config.php';
 require_once __DIR__ . '/../../core/Config.php';
 require_once __DIR__ . '/../../core/Session.php';
 require_once __DIR__ . '/../../core/AuthMiddleware.php';
-require_once SRC_PATH . '/data/mock.php';
 require_once SRC_PATH . '/core/ApiClient.php';
+require_once SRC_PATH . '/core/ApiClientHelpers.php';
 require_once SRC_PATH . '/components/components.php';
 
 AuthMiddleware::check();
+Session::touch();
 
 $title = 'Colas';
 $activeNav = 'colas';
@@ -37,8 +38,6 @@ if ($useApi) {
             'espera_max' => 0,
         ];
     }
-} else {
-    $colas = cm_colas_cc();
 }
 
 $total = count($colas);

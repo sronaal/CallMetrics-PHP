@@ -10,7 +10,7 @@
    (ok|warn|bad|info|violet|muted) estilizados en pages.css.
    ============================================================ */
 
-require_once __DIR__ . '/../data/mock.php';
+require_once __DIR__ . '/../core/helpers.php';
 
 /**
  * Token de color de badge para un estado mock.

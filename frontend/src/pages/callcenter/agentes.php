@@ -3,11 +3,12 @@ require_once __DIR__ . '/../../config.php';
 require_once __DIR__ . '/../../core/Config.php';
 require_once __DIR__ . '/../../core/Session.php';
 require_once __DIR__ . '/../../core/AuthMiddleware.php';
-require_once SRC_PATH . '/data/mock.php';
 require_once SRC_PATH . '/core/ApiClient.php';
+require_once SRC_PATH . '/core/ApiClientHelpers.php';
 require_once SRC_PATH . '/components/components.php';
 
 AuthMiddleware::check();
+Session::touch();
 
 $title = 'Agentes Call Center';
 $activeNav = 'cc-agentes';
@@ -48,10 +49,6 @@ if ($useApi) {
             'tiempo_estado' => 0, 'llamadas_hoy' => $a['llamadas_atendidas'] ?? 0, 'espera_max' => 0,
         ];
     }
-} else {
-    $agentes = cm_agentes_cc();
-    $colas = cm_colas_cc();
-    foreach ($colas as $col) { $mapaColas[$col['id']] = $col['nombre']; }
 }
 
 $total = count($agentes);

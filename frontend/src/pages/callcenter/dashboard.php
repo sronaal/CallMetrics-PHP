@@ -3,10 +3,12 @@ require_once __DIR__ . '/../../config.php';
 require_once __DIR__ . '/../../core/Config.php';
 require_once __DIR__ . '/../../core/Session.php';
 require_once __DIR__ . '/../../core/AuthMiddleware.php';
-require_once SRC_PATH . '/data/mock.php';
+require_once SRC_PATH . '/core/ApiClient.php';
+require_once SRC_PATH . '/core/ApiClientHelpers.php';
 require_once SRC_PATH . '/components/components.php';
 
 AuthMiddleware::check();
+Session::touch();
 
 $title = 'Dashboard Call Center';
 $activeNav = 'cc-dashboard';
@@ -16,10 +18,59 @@ $extraJs = [BASE_URL . 'assets/js/cc.js'];
 
 ob_start();
 
-$colas = cm_colas_cc();
-$agentesCc = cm_agentes_cc();
-$activas = cm_llamadas_activas();
-$enCola = cm_llamadas_cola();
+/* ---- Fetch data from API ---- */
+// Colas
+$apiColasResp = api_get_colas(0, 100);
+$colasData = $apiColasResp['data'] ?? [];
+$colas = [];
+foreach ($colasData as $c) {
+    $colas[] = [
+        'id' => $c['id'], 'nombre' => $c['nombre'],
+        'en_espera' => $c['llamadas_enespera'] ?? 0,
+        'nivel_servicio_pct' => 0,
+        'llamadas_hora' => 0,
+        'estado' => strtolower($c['estado'] ?? 'inactive'),
+        'espera_max' => 0,
+    ];
+}
+
+// Extensions map for agent resolution
+$apiExtResp = api_get_extensiones(0, 100);
+$mapaExt = [];
+if (!empty($apiExtResp['data'])) {
+    foreach ($apiExtResp['data'] as $e) { $mapaExt[$e['id']] = $e['numero']; }
+}
+
+// Agentes
+$apiAgentesResp = api_get_agentes(0, 100);
+$agentesData = $apiAgentesResp['data'] ?? [];
+$estadoMap = ['DISPONIBLE' => 'active', 'EN_LLAMADA' => 'on-call', 'OCUPADO' => 'break', 'DESCONECTADO' => 'offline'];
+$agentesCc = [];
+foreach ($agentesData as $a) {
+    $agentesCc[] = [
+        'id' => $a['id'], 'nombre' => $a['nombre'],
+        'extension' => $mapaExt[$a['extension_id']] ?? (string) ($a['extension_id'] ?? ''),
+        'cola_id' => $a['cola_id'] ?? null,
+        'estado' => $estadoMap[$a['estado']] ?? strtolower($a['estado'] ?? 'offline'),
+        'tiempo_estado' => 0, 'llamadas_hoy' => $a['llamadas_atendidas'] ?? 0, 'espera_max' => 0,
+    ];
+}
+
+// Active calls
+$activasResp = api_get_llamadas(0, 50);
+$activasData = $activasResp['data'] ?? [];
+$activas = [];
+foreach ($activasData as $c) {
+    if (!empty($c['fin_llamada'])) continue;
+    $activas[] = [
+        'origen' => $c['numero_origen'] ?? '', 'destino' => $c['numero_destino'] ?? '',
+        'duracion' => (int) ($c['duracion'] ?? 0), 'estado' => strtolower($c['estado'] ?? 'unknown'),
+        'agente' => null, 'pbx' => $c['pbx_nombre'] ?? '',
+    ];
+}
+
+// Calls in queue (no dedicated endpoint — empty until CDR data exists)
+$enCola = [];
 
 /* ---------------- KPIs ---------------- */
 $enColaKpi = count(array_filter($enCola, fn($c) => $c['espera_seg'] ?? 0));

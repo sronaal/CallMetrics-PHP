@@ -183,3 +183,8 @@ function api_get_eventos_pbx(int $pbxId, int $page = 0, int $size = 50): array
         'pbx_id' => $pbxId,
     ]);
 }
+
+function api_get_llamadas_activas(int $page = 0, int $size = 50): array
+{
+    return ApiClient::getInstance()->get('/llamadas', ['page' => $page, 'size' => $size, 'activas' => true]);
+}

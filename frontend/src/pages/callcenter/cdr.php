@@ -3,11 +3,12 @@ require_once __DIR__ . '/../../config.php';
 require_once __DIR__ . '/../../core/Config.php';
 require_once __DIR__ . '/../../core/Session.php';
 require_once __DIR__ . '/../../core/AuthMiddleware.php';
-require_once SRC_PATH . '/data/mock.php';
 require_once SRC_PATH . '/core/ApiClient.php';
+require_once SRC_PATH . '/core/ApiClientHelpers.php';
 require_once SRC_PATH . '/components/components.php';
 
 AuthMiddleware::check();
+Session::touch();
 
 $title = 'Registro de Llamadas (CDR)';
 $activeNav = 'cdr';
@@ -32,7 +33,7 @@ $useApi = !empty($apiCdr['success']) && isset($apiCdr['data']) && is_array($apiC
 $cdr = [];
 $colas = [];
 $agentesCc = [];
-$reportes = cm_reportes_diarios();
+$reportes = [];
 
 if ($useApi) {
     /* Fetch agents, colas, extensions for name resolution */
@@ -96,18 +97,6 @@ if ($useApi) {
             'duracion' => $r['duracion'] ?? 0,
             'resultado' => $estadoMapCdr[$r['estado']] ?? strtolower($r['estado'] ?? 'unknown'),
         ];
-    }
-} else {
-    $cdr = cm_cdr();
-    $colas = cm_colas_cc();
-    $agentesCc = cm_agentes_cc();
-    if ($desde !== '') {
-        $tsDesde = strtotime($desde);
-        if ($tsDesde) { $cdr = array_values(array_filter($cdr, fn($c) => (int) $c['fecha'] >= $tsDesde)); }
-    }
-    if ($hasta !== '') {
-        $tsHasta = strtotime($hasta . ' 23:59:59');
-        if ($tsHasta) { $cdr = array_values(array_filter($cdr, fn($c) => (int) $c['fecha'] <= $tsHasta)); }
     }
 }
 

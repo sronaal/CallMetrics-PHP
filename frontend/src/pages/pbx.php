@@ -100,6 +100,13 @@ $basePaginacion = BASE_URL . 'pbx.php?' . http_build_query(array_filter(['q' => 
             <form id="pbxCreateForm" novalidate>
                 <div class="modal-body">
                     <div class="mb-3">
+                        <label class="form-label" for="pbxTenant">Tenant / Empresa <span class="text-danger">*</span></label>
+                        <select class="form-select" id="pbxTenant" name="tenant_id" required>
+                            <option value="">Seleccionar tenant...</option>
+                        </select>
+                        <div class="invalid-feedback" id="pbxTenantError">Debe seleccionar un tenant.</div>
+                    </div>
+                    <div class="mb-3">
                         <label class="form-label" for="pbxNombre">Nombre del servidor <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" id="pbxNombre" name="nombre" required
                                placeholder="PBX Principal" minlength="2" maxlength="100">
@@ -118,7 +125,7 @@ $basePaginacion = BASE_URL . 'pbx.php?' . http_build_query(array_filter(['q' => 
                         <div class="invalid-feedback" id="pbxPuertoError">El puerto debe estar entre 1 y 65535.</div>
                     </div>
                     <p class="cm-reveal-hint mb-0 mt-3">
-                        El <code>AGENT_ID</code> y <code>TOKEN_REGISTRO</code> se generan automáticamente al registrar.
+                        El <code>AGENT_ID</code>, <code>PBX_ID</code> y <code>TOKEN_REGISTRO</code> se generan automáticamente al registrar.
                     </p>
                 </div>
                 <div class="modal-footer">
@@ -140,10 +147,17 @@ $basePaginacion = BASE_URL . 'pbx.php?' . http_build_query(array_filter(['q' => 
             </div>
             <div class="modal-body">
                 <div class="mb-3">
+                    <label class="form-label">ID del Agente (<code>AGENT_ID</code>)</label>
+                    <div class="cm-reveal-code">
+                        <code id="revealAgente" class="text-success">—</code>
+                        <button type="button" class="cm-reveal-copy" data-copy="revealAgente" title="Copiar AGENT_ID"><i class="bi bi-copy"></i></button>
+                    </div>
+                </div>
+                <div class="mb-3">
                     <label class="form-label">ID del PBX (<code>PBX_ID</code>)</label>
                     <div class="cm-reveal-code">
                         <code id="revealPbxId">—</code>
-                        <button type="button" class="cm-reveal-copy" data-copy="revealPbxId" title="Copiar ID"><i class="bi bi-copy"></i></button>
+                        <button type="button" class="cm-reveal-copy" data-copy="revealPbxId" title="Copiar PBX_ID"><i class="bi bi-copy"></i></button>
                     </div>
                 </div>
                 <div class="mb-3">
@@ -151,13 +165,6 @@ $basePaginacion = BASE_URL . 'pbx.php?' . http_build_query(array_filter(['q' => 
                     <div class="cm-reveal-code">
                         <code id="revealToken" class="text-info">—</code>
                         <button type="button" class="cm-reveal-copy" data-copy="revealToken" title="Copiar Token"><i class="bi bi-copy"></i></button>
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">ID del Agente (<code>AGENT_ID</code>)</label>
-                    <div class="cm-reveal-code">
-                        <code id="revealAgente" class="text-success">—</code>
-                        <button type="button" class="cm-reveal-copy" data-copy="revealAgente" title="Copiar AGENT_ID"><i class="bi bi-copy"></i></button>
                     </div>
                 </div>
                 <p class="cm-reveal-hint mb-0">
@@ -221,19 +228,44 @@ $basePaginacion = BASE_URL . 'pbx.php?' . http_build_query(array_filter(['q' => 
         });
     }
 
+    /* Cargar tenants en el select al abrir el modal */
+    var tenantSelect = document.getElementById('pbxTenant');
+    var createModal = document.getElementById('pbxCreateModal');
+    if (tenantSelect && createModal) {
+        var tenantsLoaded = false;
+        createModal.addEventListener('show.bs.modal', function () {
+            if (tenantsLoaded) return;
+            apiRequest('GET', '/tenants').then(function(result) {
+                if (result.success && Array.isArray(result.data)) {
+                    var activos = result.data.filter(function(t) { return t.activo; });
+                    activos.sort(function(a, b) { return a.nombre.localeCompare(b.nombre); });
+                    activos.forEach(function(t) {
+                        var opt = document.createElement('option');
+                        opt.value = t.id;
+                        opt.textContent = t.nombre;
+                        tenantSelect.appendChild(opt);
+                    });
+                    tenantsLoaded = true;
+                }
+            });
+        });
+    }
+
     /* Crear PBX */
     var createForm = document.getElementById('pbxCreateForm');
     if (createForm) {
         createForm.addEventListener('submit', function (e) {
             e.preventDefault();
+            var tenantId = document.getElementById('pbxTenant').value;
             var nombre = document.getElementById('pbxNombre').value.trim();
             var ip = document.getElementById('pbxHost').value.trim();
             var puerto = parseInt(document.getElementById('pbxPuerto').value) || 5038;
-            if (!nombre || !ip) { return; }
+            if (!tenantId || !nombre || !ip) { return; }
 
-            apiRequest('POST', '/pbx', { nombre: nombre, ip_address: ip, puerto_ami: puerto }).then(function(result) {
+            var payload = { tenant_id: parseInt(tenantId), nombre: nombre, ip_address: ip, puerto_ami: puerto };
+            apiRequest('POST', '/pbx', payload).then(function(result) {
                 if (result.success !== false && result.data) {
-                    document.getElementById('revealPbxId').textContent = result.data.id || '—';
+                    document.getElementById('revealPbxId').textContent = result.data.agente_id || result.data.id || '—';
                     document.getElementById('revealToken').textContent = result.data.token_registro || '—';
                     document.getElementById('revealAgente').textContent = result.data.agent_id || '—';
                     bootstrap.Modal.getOrCreateInstance(document.getElementById('pbxRevealModal')).show();
@@ -242,7 +274,7 @@ $basePaginacion = BASE_URL . 'pbx.php?' . http_build_query(array_filter(['q' => 
                 }
                 bootstrap.Modal.getOrCreateInstance(document.getElementById('pbxCreateModal')).hide();
                 createForm.reset();
-            }).catch(function() { alert('Error de conexion'); });
+            }).catch(function(err) { alert('Error: ' + (err.message || 'desconocido')); });
         });
     }
 
@@ -274,10 +306,10 @@ $basePaginacion = BASE_URL . 'pbx.php?' . http_build_query(array_filter(['q' => 
     var copiarBtn = document.getElementById('copiarTodo');
     if (copiarBtn) {
         copiarBtn.addEventListener('click', function () {
-            var id = document.getElementById('revealPbxId').textContent;
-            var token = document.getElementById('revealToken').textContent;
             var agente = document.getElementById('revealAgente').textContent;
-            var text = 'PBX_ID=' + id + '\nTOKEN_REGISTRO=' + token + '\nAGENT_ID=' + agente;
+            var pbxId = document.getElementById('revealPbxId').textContent;
+            var token = document.getElementById('revealToken').textContent;
+            var text = 'AGENT_ID=' + agente + '\nPBX_ID=' + pbxId + '\nTOKEN_REGISTRO=' + token;
             navigator.clipboard.writeText(text).then(function () {
                 copiarBtn.innerHTML = '<i class="bi bi-check me-1"></i>Copiado';
                 setTimeout(function () { copiarBtn.innerHTML = '<i class="bi bi-copy me-1"></i>Copiar Todo'; }, 2000);

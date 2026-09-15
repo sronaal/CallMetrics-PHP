@@ -6,6 +6,26 @@
  */
 declare(strict_types=1);
 
+// Bloquear paths sensibles de auth
+$uri = $_SERVER['REQUEST_URI'] ?? '/';
+$sensitivePaths = ['auth/login', 'auth/refresh', 'auth/primer-ingreso'];
+foreach ($sensitivePaths as $path) {
+    if (strpos($uri, $path) !== false) {
+        http_response_code(403);
+        exit('Forbidden');
+    }
+}
+
+// Validar Content-Type en POST/PUT/PATCH
+$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+if (in_array($method, ['POST', 'PUT', 'PATCH'])) {
+    $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+    if (strpos($contentType, 'application/json') === false) {
+        http_response_code(415);
+        exit('Unsupported Media Type');
+    }
+}
+
 $BACKEND = 'http://localhost:8080';
 
 // Extract the path after api-proxy.php/

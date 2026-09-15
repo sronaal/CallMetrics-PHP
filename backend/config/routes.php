@@ -43,15 +43,15 @@ return [
     ['PUT',    '/api/extensiones/{id}',         'ExtensionController@update',           true, 'ADMIN_TENANT'],
     ['PATCH',  '/api/extensiones/{id}/toggle',  'ExtensionController@toggle',           true, 'ADMIN_TENANT'],
 
-    // Colas routes (ADMIN_TENANT+)
-    ['GET',    '/api/colas',              'QueueController@index',            true, 'ADMIN_TENANT'],
+    // Colas routes (lectura: SUPERVISOR+, escritura: ADMIN_TENANT+)
+    ['GET',    '/api/colas',              'QueueController@index',            true, 'SUPERVISOR'],
     ['GET',    '/api/colas/{id}',         'QueueController@show',             true, 'ADMIN_TENANT'],
     ['POST',   '/api/colas',              'QueueController@store',            true, 'ADMIN_TENANT'],
     ['PUT',    '/api/colas/{id}',         'QueueController@update',           true, 'ADMIN_TENANT'],
     ['PATCH',  '/api/colas/{id}/toggle',  'QueueController@toggle',           true, 'ADMIN_TENANT'],
 
-    // Agentes routes (ADMIN_TENANT+)
-    ['GET',    '/api/agentes',              'AgentController@index',            true, 'ADMIN_TENANT'],
+    // Agentes routes (lectura: SUPERVISOR+, escritura: ADMIN_TENANT+)
+    ['GET',    '/api/agentes',              'AgentController@index',            true, 'SUPERVISOR'],
     ['GET',    '/api/agentes/{id}',         'AgentController@show',             true, 'ADMIN_TENANT'],
     ['POST',   '/api/agentes',              'AgentController@store',            true, 'ADMIN_TENANT'],
     ['PUT',    '/api/agentes/{id}',         'AgentController@update',           true, 'ADMIN_TENANT'],

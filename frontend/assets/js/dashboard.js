@@ -6,7 +6,7 @@
 
     var MONO_FONT = "'JetBrains Mono', monospace";
     var TOOLTIP_BG = '#1e2a3a';
-    var API_BASE = '/api';
+    var API_BASE = '/CallMetrics_4TO/frontend/api-proxy.php';
 
     /* ============================================================
        Helpers

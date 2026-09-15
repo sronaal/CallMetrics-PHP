@@ -10,9 +10,23 @@ class CorsMiddleware
      */
     public static function handle(): void
     {
-        header('Access-Control-Allow-Origin: *');
+        // Orígenes permitidos (whitelist)
+        $allowedOrigins = [
+            'http://localhost',
+            'http://localhost:80',
+            'http://127.0.0.1',
+            'http://localhost:3000',
+        ];
+
+        $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+        if (in_array($origin, $allowedOrigins)) {
+            header("Access-Control-Allow-Origin: {$origin}");
+            header('Vary: Origin');
+        }
+
         header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
-        header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-Agent-Token');
+        header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+        header('Access-Control-Allow-Credentials: true');
         header('Access-Control-Max-Age: 86400');
 
         if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {

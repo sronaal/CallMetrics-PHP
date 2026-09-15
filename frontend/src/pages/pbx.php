@@ -206,17 +206,23 @@ $basePaginacion = BASE_URL . 'pbx.php?' . http_build_query(array_filter(['q' => 
 (function () {
     'use strict';
     var API_BASE = '<?= Config::API_PROXY_URL ?>';
-    var TOKEN = '<?= Session::token() ?>';
+    var TOKEN = document.querySelector('meta[name="csrf-token"]').content;
     var deletePbxId = null;
 
     function apiRequest(method, path, data) {
-        var xhr = new XMLHttpRequest();
-        xhr.open(method, API_BASE + path, false);
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        if (TOKEN) xhr.setRequestHeader('Authorization', 'Bearer ' + TOKEN);
-        if (data) xhr.send(JSON.stringify(data));
-        else xhr.send();
-        return JSON.parse(xhr.responseText);
+        return new Promise(function(resolve, reject) {
+            var xhr = new XMLHttpRequest();
+            xhr.open(method, API_BASE + path, true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            if (TOKEN) xhr.setRequestHeader('Authorization', 'Bearer ' + TOKEN);
+            xhr.onload = function() {
+                try { resolve(JSON.parse(xhr.responseText)); }
+                catch(e) { reject(e); }
+            };
+            xhr.onerror = function() { reject(new Error('Network error')); };
+            if (data) xhr.send(JSON.stringify(data));
+            else xhr.send();
+        });
     }
 
     /* Crear PBX */
@@ -230,18 +236,18 @@ $basePaginacion = BASE_URL . 'pbx.php?' . http_build_query(array_filter(['q' => 
             var token = document.getElementById('pbxToken').value.trim();
             if (!nombre || !ip || !token) { return; }
 
-            var result = apiRequest('POST', '/pbx', { nombre: nombre, ip_address: ip, puerto_ami: puerto, token_agente: token });
-            if (result.success !== false && result.data) {
-                /* Mostrar modal de reveal con los datos generados */
-                document.getElementById('revealPbxId').textContent = result.data.id || '—';
-                document.getElementById('revealToken').textContent = result.data.token_registro || '—';
-                document.getElementById('revealAgente').textContent = result.data.agent_id || '—';
-                bootstrap.Modal.getOrCreateInstance(document.getElementById('pbxRevealModal')).show();
-            } else {
-                alert(result.message || 'Error al registrar PBX');
-            }
-            bootstrap.Modal.getOrCreateInstance(document.getElementById('pbxCreateModal')).hide();
-            createForm.reset();
+            apiRequest('POST', '/pbx', { nombre: nombre, ip_address: ip, puerto_ami: puerto, token_agente: token }).then(function(result) {
+                if (result.success !== false && result.data) {
+                    document.getElementById('revealPbxId').textContent = result.data.id || '—';
+                    document.getElementById('revealToken').textContent = result.data.token_registro || '—';
+                    document.getElementById('revealAgente').textContent = result.data.agent_id || '—';
+                    bootstrap.Modal.getOrCreateInstance(document.getElementById('pbxRevealModal')).show();
+                } else {
+                    alert(result.message || 'Error al registrar PBX');
+                }
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('pbxCreateModal')).hide();
+                createForm.reset();
+            }).catch(function() { alert('Error de conexion'); });
         });
     }
 
@@ -259,12 +265,10 @@ $basePaginacion = BASE_URL . 'pbx.php?' . http_build_query(array_filter(['q' => 
     if (confirmBtn) {
         confirmBtn.addEventListener('click', function () {
             if (!deletePbxId) { return; }
-            var result = apiRequest('DELETE', '/pbx/' + deletePbxId);
-            if (result.success !== false) {
-                window.location.reload();
-            } else {
-                alert(result.message || 'Error al eliminar');
-            }
+            apiRequest('DELETE', '/pbx/' + deletePbxId).then(function(result) {
+                if (result.success !== false) { window.location.reload(); }
+                else { alert(result.message || 'Error al eliminar'); }
+            }).catch(function() { alert('Error de conexion'); });
         });
     }
 

@@ -170,16 +170,22 @@ $estados = ['active', 'trial', 'suspended'];
         var tbody = document.getElementById('empresasTableRows');
         var title = document.getElementById('cmEmpresasTitle');
         var API_BASE = '<?= Config::API_PROXY_URL ?>';
-        var TOKEN = '<?= Session::token() ?>';
+        var TOKEN = document.querySelector('meta[name="csrf-token"]').content;
 
         function apiRequest(method, path, data) {
-            var xhr = new XMLHttpRequest();
-            xhr.open(method, API_BASE + path, false);
-            xhr.setRequestHeader('Content-Type', 'application/json');
-            if (TOKEN) xhr.setRequestHeader('Authorization', 'Bearer ' + TOKEN);
-            if (data) xhr.send(JSON.stringify(data));
-            else xhr.send();
-            return JSON.parse(xhr.responseText);
+            return new Promise(function(resolve, reject) {
+                var xhr = new XMLHttpRequest();
+                xhr.open(method, API_BASE + path, true);
+                xhr.setRequestHeader('Content-Type', 'application/json');
+                if (TOKEN) xhr.setRequestHeader('Authorization', 'Bearer ' + TOKEN);
+                xhr.onload = function() {
+                    try { resolve(JSON.parse(xhr.responseText)); }
+                    catch(e) { reject(e); }
+                };
+                xhr.onerror = function() { reject(new Error('Network error')); };
+                if (data) xhr.send(JSON.stringify(data));
+                else xhr.send();
+            });
         }
 
         function esc(v) {
@@ -233,19 +239,15 @@ $estados = ['active', 'trial', 'suspended'];
             var payload = { nombre: nombre, nit: nit, email: email, plan: plan };
 
             if (id) {
-                var result = apiRequest('PUT', '/tenants/' + id, payload);
-                if (result.success !== false) {
-                    window.location.reload();
-                } else {
-                    alert(result.message || 'Error al actualizar');
-                }
+                apiRequest('PUT', '/tenants/' + id, payload).then(function(result) {
+                    if (result.success !== false) { window.location.reload(); }
+                    else { alert(result.message || 'Error al actualizar'); }
+                }).catch(function() { alert('Error de conexion'); });
             } else {
-                var result = apiRequest('POST', '/tenants', payload);
-                if (result.success !== false) {
-                    window.location.reload();
-                } else {
-                    alert(result.message || 'Error al crear');
-                }
+                apiRequest('POST', '/tenants', payload).then(function(result) {
+                    if (result.success !== false) { window.location.reload(); }
+                    else { alert(result.message || 'Error al crear'); }
+                }).catch(function() { alert('Error de conexion'); });
             }
             bootstrap.Modal.getOrCreateInstance(modalEl).hide();
         });
@@ -255,12 +257,13 @@ $estados = ['active', 'trial', 'suspended'];
             var sw = e.target.closest('.cm-empresas-toggle');
             if (!sw) { return; }
             var id = sw.id.replace('empresaToggle', '');
-            var result = apiRequest('PATCH', '/tenants/' + id + '/toggle');
-            var badge = sw.closest('tr').querySelector('.cm-badge');
-            if (badge) {
-                if (sw.checked) { badge.className = 'cm-badge cm-badge-ok'; badge.textContent = 'Activo'; }
-                else { badge.className = 'cm-badge cm-badge-bad'; badge.textContent = 'Suspendida'; }
-            }
+            apiRequest('PATCH', '/tenants/' + id + '/toggle').then(function() {
+                var badge = sw.closest('tr').querySelector('.cm-badge');
+                if (badge) {
+                    if (sw.checked) { badge.className = 'cm-badge cm-badge-ok'; badge.textContent = 'Activo'; }
+                    else { badge.className = 'cm-badge cm-badge-bad'; badge.textContent = 'Suspendida'; }
+                }
+            }).catch(function() { alert('Error de conexion'); });
         });
     })();
     </script>

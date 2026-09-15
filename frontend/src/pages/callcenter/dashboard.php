@@ -1,7 +1,12 @@
 <?php
 require_once __DIR__ . '/../../config.php';
+require_once __DIR__ . '/../../core/Config.php';
+require_once __DIR__ . '/../../core/Session.php';
+require_once __DIR__ . '/../../core/AuthMiddleware.php';
 require_once SRC_PATH . '/data/mock.php';
 require_once SRC_PATH . '/components/components.php';
+
+AuthMiddleware::check();
 
 $title = 'Dashboard Call Center';
 $activeNav = 'cc-dashboard';

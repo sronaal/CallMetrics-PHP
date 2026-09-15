@@ -193,16 +193,22 @@ $rolesDisponibles = ['SUPER_ADMIN', 'ADMIN_TENANT', 'SUPERVISOR', 'OPERADOR'];
     var tbody = document.getElementById('usersTableRows');
     var title = document.getElementById('cmUsersTitle');
     var API_BASE = '<?= Config::API_PROXY_URL ?>';
-    var TOKEN = '<?= Session::token() ?>';
+    var TOKEN = document.querySelector('meta[name="csrf-token"]').content;
 
     function apiRequest(method, path, data) {
-        var xhr = new XMLHttpRequest();
-        xhr.open(method, API_BASE + path, false);
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        if (TOKEN) xhr.setRequestHeader('Authorization', 'Bearer ' + TOKEN);
-        if (data) xhr.send(JSON.stringify(data));
-        else xhr.send();
-        return JSON.parse(xhr.responseText);
+        return new Promise(function(resolve, reject) {
+            var xhr = new XMLHttpRequest();
+            xhr.open(method, API_BASE + path, true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            if (TOKEN) xhr.setRequestHeader('Authorization', 'Bearer ' + TOKEN);
+            xhr.onload = function() {
+                try { resolve(JSON.parse(xhr.responseText)); }
+                catch(e) { reject(e); }
+            };
+            xhr.onerror = function() { reject(new Error('Network error')); };
+            if (data) xhr.send(JSON.stringify(data));
+            else xhr.send();
+        });
     }
 
     function esc(v) {
@@ -269,19 +275,15 @@ $rolesDisponibles = ['SUPER_ADMIN', 'ADMIN_TENANT', 'SUPERVISOR', 'OPERADOR'];
         if (!id) payload.password = password;
 
         if (id) {
-            var result = apiRequest('PUT', '/usuarios/' + id, payload);
-            if (result.success !== false) {
-                window.location.reload();
-            } else {
-                alert(result.message || 'Error al actualizar');
-            }
+            apiRequest('PUT', '/usuarios/' + id, payload).then(function(result) {
+                if (result.success !== false) { window.location.reload(); }
+                else { alert(result.message || 'Error al actualizar'); }
+            }).catch(function() { alert('Error de conexion'); });
         } else {
-            var result = apiRequest('POST', '/usuarios', payload);
-            if (result.success !== false) {
-                window.location.reload();
-            } else {
-                alert(result.message || 'Error al crear');
-            }
+            apiRequest('POST', '/usuarios', payload).then(function(result) {
+                if (result.success !== false) { window.location.reload(); }
+                else { alert(result.message || 'Error al crear'); }
+            }).catch(function() { alert('Error de conexion'); });
         }
         bootstrap.Modal.getOrCreateInstance(modalEl).hide();
     });
@@ -291,12 +293,13 @@ $rolesDisponibles = ['SUPER_ADMIN', 'ADMIN_TENANT', 'SUPERVISOR', 'OPERADOR'];
         var sw = e.target.closest('.cm-users-toggle');
         if (!sw) { return; }
         var id = sw.id.replace('userToggle', '');
-        var result = apiRequest('PATCH', '/usuarios/' + id + '/toggle');
-        var badge = sw.closest('tr').querySelector('.cm-badge');
-        if (badge) {
-            if (sw.checked) { badge.className = 'cm-badge cm-badge-ok'; badge.textContent = 'Activo'; }
-            else { badge.className = 'cm-badge cm-badge-muted'; badge.textContent = 'Inactivo'; }
-        }
+        apiRequest('PATCH', '/usuarios/' + id + '/toggle').then(function() {
+            var badge = sw.closest('tr').querySelector('.cm-badge');
+            if (badge) {
+                if (sw.checked) { badge.className = 'cm-badge cm-badge-ok'; badge.textContent = 'Activo'; }
+                else { badge.className = 'cm-badge cm-badge-muted'; badge.textContent = 'Inactivo'; }
+            }
+        }).catch(function() { alert('Error de conexion'); });
     });
 })();
 </script>

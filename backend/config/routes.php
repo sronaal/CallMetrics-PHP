@@ -79,12 +79,22 @@ return [
     // Agent Ingestion routes (token-based auth, no JWT)
     ['POST',   '/api/agent/heartbeat',    'AgentIngestController@heartbeat', false],
     ['POST',   '/api/agent/cdr',          'AgentIngestController@cdr',       false],
+    ['POST',   '/api/agent/cdr-report',   'AgentIngestController@cdrReport', false],
     ['POST',   '/api/agent/events',       'AgentIngestController@events',    false],
     ['POST',   '/api/agent/metrics',      'AgentIngestController@metrics',   false],
 
     // Agent Ingestion routes — v1 prefix (compatible with Python agent & Spring agent)
     ['POST',   '/api/v1/agent/heartbeat', 'AgentIngestController@heartbeat', false],
     ['POST',   '/api/v1/agent/cdr',       'AgentIngestController@cdr',       false],
+    ['POST',   '/api/v1/agent/cdr-report','AgentIngestController@cdrReport', false],
     ['POST',   '/api/v1/agent/events',    'AgentIngestController@events',    false],
     ['POST',   '/api/v1/agent/metrics',   'AgentIngestController@metrics',   false],
+
+    // CDR Report read routes (SUPERVISOR+)
+    ['GET',    '/api/cdr-report/llamadas',       'CdrReportController@llamadas',       true, 'SUPERVISOR'],
+    ['GET',    '/api/cdr-report/colas',          'CdrReportController@colas',          true, 'SUPERVISOR'],
+    ['GET',    '/api/cdr-report/agentes',        'CdrReportController@agentes',        true, 'SUPERVISOR'],
+    ['GET',    '/api/cdr-report/estadisticas',   'CdrReportController@estadisticas',   true, 'SUPERVISOR'],
+    ['GET',    '/api/cdr-report/real',           'CdrReportController@real',           true, 'SUPERVISOR'],
+    ['GET',    '/api/cdr-report/stats',          'CdrReportController@stats',          true, 'SUPERVISOR'],
 ];

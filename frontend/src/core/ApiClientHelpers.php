@@ -188,3 +188,35 @@ function api_get_llamadas_activas(int $page = 0, int $size = 50): array
 {
     return ApiClient::getInstance()->get('/llamadas', ['page' => $page, 'size' => $size, 'activas' => true]);
 }
+
+// --- CDR Report helpers (agente-collector nested dataset) ---
+
+function api_get_cdr_llamadas(int $page = 0, int $size = 50, array $filters = []): array
+{
+    return ApiClient::getInstance()->get('/cdr-report/llamadas', array_merge(['page' => $page, 'size' => $size], $filters));
+}
+
+function api_get_cdr_colas(): array
+{
+    return ApiClient::getInstance()->get('/cdr-report/colas');
+}
+
+function api_get_cdr_agentes(): array
+{
+    return ApiClient::getInstance()->get('/cdr-report/agentes');
+}
+
+function api_get_cdr_estadisticas(int $page = 0, int $size = 50, array $filters = []): array
+{
+    return ApiClient::getInstance()->get('/cdr-report/estadisticas', array_merge(['page' => $page, 'size' => $size], $filters));
+}
+
+function api_get_cdr_real(int $page = 0, int $size = 50, array $filters = []): array
+{
+    return ApiClient::getInstance()->get('/cdr-report/real', array_merge(['page' => $page, 'size' => $size], $filters));
+}
+
+function api_get_cdr_stats(): array
+{
+    return ApiClient::getInstance()->get('/cdr-report/stats');
+}

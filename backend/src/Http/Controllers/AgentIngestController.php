@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace CallMetrics\Http\Controllers;
 
-use CallMetrics\Core\{Request, Response, Database};
+use CallMetrics\Core\{Request, Response, Database, TenantContext};
 use CallMetrics\Models\{Pbx, CallRecord, Event, AlertRule};
 use CallMetrics\WebSocket\EventBridge;
 
@@ -230,6 +230,258 @@ class AgentIngestController extends Controller
             'inserted' => $inserted,
             'errors' => $errors
         ], "$inserted registros CDR procesados");
+    }
+
+    /**
+     * POST /api/agent/cdr-report
+     *
+     * Recibe el reporte completo CDR del agente-collector con 5 datasets anidados:
+     *   datos.llamadasNormalizadas, datos.colasResumen, datos.agentesResumen,
+     *   datos.estadisticasColas, datos.llamadasReal
+     *
+     * Inserta/actualiza en las tablas cdr_* correspondientes.
+     *
+     * Headers requeridos:
+     *   X-Agent-ID: UUID del agente collector
+     *
+     * Body:
+     *   {
+     *     "agenteId": "uuid",
+     *     "timestamp": "...",
+     *     "empresaId": 1,
+     *     "datos": {
+     *       "llamadasNormalizadas": [...],
+     *       "colasResumen": [...],
+     *       "agentesResumen": [...],
+     *       "estadisticasColas": [...],
+     *       "llamadasReal": [...]
+     *     }
+     *   }
+     */
+    public function cdrReport(Request $request): void
+    {
+        $pbx = $this->authenticateAgent($request);
+        if (!$pbx) return;
+
+        $data = $request->body();
+        $datos = $data['datos'] ?? [];
+
+        if (empty($datos)) {
+            Response::error('No se recibieron datos en el campo "datos"', 422);
+            return;
+        }
+
+        $db = Database::getInstance();
+        $tenantId = (int) $pbx['tenant_id'];
+        $pbxId = (int) $pbx['id'];
+        $counts = [];
+
+        // --- 1. llamadasNormalizadas → cdr_llamadas ---
+        $llamadas = $datos['llamadasNormalizadas'] ?? [];
+        $counts['llamadas'] = 0;
+        foreach ($llamadas as $row) {
+            if (empty($row['linkedid'])) continue;
+            try {
+                $db->execute(
+                    "INSERT INTO cdr_llamadas
+                        (tenant_id, pbx_id, linkedid, fecha_inicio, numero_origen, destino_inicial,
+                         paso_por_cola, nombre_cola, extension_agente, nombre_agente,
+                         tiempo_conversacion, tiempo_timbrado, estado_final)
+                     VALUES
+                        (:tenant_id, :pbx_id, :linkedid, :fecha_inicio, :numero_origen, :destino_inicial,
+                         :paso_por_cola, :nombre_cola, :extension_agente, :nombre_agente,
+                         :tiempo_conversacion, :tiempo_timbrado, :estado_final)
+                     ON DUPLICATE KEY UPDATE
+                        fecha_inicio = VALUES(fecha_inicio), numero_origen = VALUES(numero_origen),
+                        destino_inicial = VALUES(destino_inicial), paso_por_cola = VALUES(paso_por_cola),
+                        nombre_cola = VALUES(nombre_cola), extension_agente = VALUES(extension_agente),
+                        nombre_agente = VALUES(nombre_agente), tiempo_conversacion = VALUES(tiempo_conversacion),
+                        tiempo_timbrado = VALUES(tiempo_timbrado), estado_final = VALUES(estado_final)",
+                    [
+                        ':tenant_id' => $tenantId,
+                        ':pbx_id' => $pbxId,
+                        ':linkedid' => $row['linkedid'],
+                        ':fecha_inicio' => $row['fecha_inicio'] ?? null,
+                        ':numero_origen' => $row['numero_origen'] ?? null,
+                        ':destino_inicial' => $row['destino_inicial'] ?? null,
+                        ':paso_por_cola' => $row['paso_por_cola'] ?? null,
+                        ':nombre_cola' => $row['nombre_cola'] ?? null,
+                        ':extension_agente' => $row['extension_agente'] ?? null,
+                        ':nombre_agente' => $row['nombre_agente'] ?? null,
+                        ':tiempo_conversacion' => $row['tiempo_conversacion'] ?? null,
+                        ':tiempo_timbrado' => $row['tiempo_timbrado'] ?? null,
+                        ':estado_final' => $row['estado_final'] ?? null,
+                    ]
+                );
+                $counts['llamadas']++;
+            } catch (\Throwable $e) {
+                // Skip duplicate errors silently
+            }
+        }
+
+        // --- 2. colasResumen → cdr_colas_resumen ---
+        $colasResumen = $datos['colasResumen'] ?? [];
+        $counts['colas'] = 0;
+        foreach ($colasResumen as $row) {
+            if (empty($row['numero_cola'])) continue;
+            try {
+                $db->execute(
+                    "INSERT INTO cdr_colas_resumen
+                        (tenant_id, pbx_id, numero_cola, total_llamadas, contestadas,
+                         no_contestadas, ocupadas, fallidas, porcentaje_efectividad,
+                         promedio_espera, promedio_duracion)
+                     VALUES
+                        (:tenant_id, :pbx_id, :numero_cola, :total_llamadas, :contestadas,
+                         :no_contestadas, :ocupadas, :fallidas, :porcentaje_efectividad,
+                         :promedio_espera, :promedio_duracion)
+                     ON DUPLICATE KEY UPDATE
+                        total_llamadas = VALUES(total_llamadas), contestadas = VALUES(contestadas),
+                        no_contestadas = VALUES(no_contestadas), ocupadas = VALUES(ocupadas),
+                        fallidas = VALUES(fallidas), porcentaje_efectividad = VALUES(porcentaje_efectividad),
+                        promedio_espera = VALUES(promedio_espera), promedio_duracion = VALUES(promedio_duracion)",
+                    [
+                        ':tenant_id' => $tenantId,
+                        ':pbx_id' => $pbxId,
+                        ':numero_cola' => $row['numero_cola'],
+                        ':total_llamadas' => (int) ($row['total_llamadas'] ?? 0),
+                        ':contestadas' => (int) ($row['contestadas'] ?? 0),
+                        ':no_contestadas' => (int) ($row['no_contestadas'] ?? 0),
+                        ':ocupadas' => (int) ($row['ocupadas'] ?? 0),
+                        ':fallidas' => (int) ($row['fallidas'] ?? 0),
+                        ':porcentaje_efectividad' => (int) ($row['porcentaje_efectividad'] ?? 0),
+                        ':promedio_espera' => $row['promedio_espera'] ?? null,
+                        ':promedio_duracion' => $row['promedio_duracion'] ?? null,
+                    ]
+                );
+                $counts['colas']++;
+            } catch (\Throwable $e) {
+                // Skip
+            }
+        }
+
+        // --- 3. agentesResumen → cdr_agentes_resumen ---
+        $agentesResumen = $datos['agentesResumen'] ?? [];
+        $counts['agentes'] = 0;
+        foreach ($agentesResumen as $row) {
+            if (empty($row['extension_agente'])) continue;
+            try {
+                $db->execute(
+                    "INSERT INTO cdr_agentes_resumen
+                        (tenant_id, pbx_id, extension_agente, nombre_agente,
+                         contestadas, no_contestadas, ocupadas, fallidas, total_llamadas,
+                         porcentaje_efectividad, promedio_espera, promedio_duracion)
+                     VALUES
+                        (:tenant_id, :pbx_id, :extension_agente, :nombre_agente,
+                         :contestadas, :no_contestadas, :ocupadas, :fallidas, :total_llamadas,
+                         :porcentaje_efectividad, :promedio_espera, :promedio_duracion)
+                     ON DUPLICATE KEY UPDATE
+                        nombre_agente = VALUES(nombre_agente), contestadas = VALUES(contestadas),
+                        no_contestadas = VALUES(no_contestadas), ocupadas = VALUES(ocupadas),
+                        fallidas = VALUES(fallidas), total_llamadas = VALUES(total_llamadas),
+                        porcentaje_efectividad = VALUES(porcentaje_efectividad),
+                        promedio_espera = VALUES(promedio_espera), promedio_duracion = VALUES(promedio_duracion)",
+                    [
+                        ':tenant_id' => $tenantId,
+                        ':pbx_id' => $pbxId,
+                        ':extension_agente' => $row['extension_agente'],
+                        ':nombre_agente' => $row['nombre_agente'] ?? null,
+                        ':contestadas' => (int) ($row['contestadas'] ?? 0),
+                        ':no_contestadas' => (int) ($row['no_contestadas'] ?? 0),
+                        ':ocupadas' => (int) ($row['ocupadas'] ?? 0),
+                        ':fallidas' => (int) ($row['fallidas'] ?? 0),
+                        ':total_llamadas' => (int) ($row['total_llamadas'] ?? 0),
+                        ':porcentaje_efectividad' => (int) ($row['porcentaje_efectividad'] ?? 0),
+                        ':promedio_espera' => $row['promedio_espera'] ?? null,
+                        ':promedio_duracion' => $row['promedio_duracion'] ?? null,
+                    ]
+                );
+                $counts['agentes']++;
+            } catch (\Throwable $e) {
+                // Skip
+            }
+        }
+
+        // --- 4. estadisticasColas → cdr_estadisticas_colas ---
+        $estadisticasColas = $datos['estadisticasColas'] ?? [];
+        $counts['estadisticas'] = 0;
+        foreach ($estadisticasColas as $row) {
+            if (empty($row['linkedid'])) continue;
+            try {
+                $db->execute(
+                    "INSERT INTO cdr_estadisticas_colas
+                        (tenant_id, pbx_id, linkedid, numero_cola, fecha_entrada,
+                         estado_final, caller_id, agente_asignado, espera_seg, duracion_seg)
+                     VALUES
+                        (:tenant_id, :pbx_id, :linkedid, :numero_cola, :fecha_entrada,
+                         :estado_final, :caller_id, :agente_asignado, :espera_seg, :duracion_seg)
+                     ON DUPLICATE KEY UPDATE
+                        numero_cola = VALUES(numero_cola), fecha_entrada = VALUES(fecha_entrada),
+                        estado_final = VALUES(estado_final), caller_id = VALUES(caller_id),
+                        agente_asignado = VALUES(agente_asignado), espera_seg = VALUES(espera_seg),
+                        duracion_seg = VALUES(duracion_seg)",
+                    [
+                        ':tenant_id' => $tenantId,
+                        ':pbx_id' => $pbxId,
+                        ':linkedid' => $row['linkedid'],
+                        ':numero_cola' => $row['numero_cola'] ?? null,
+                        ':fecha_entrada' => $row['fecha_entrada'] ?? null,
+                        ':estado_final' => $row['estado_final'] ?? null,
+                        ':caller_id' => $row['caller_id'] ?? null,
+                        ':agente_asignado' => $row['agente_asignado'] ?? null,
+                        ':espera_seg' => (int) ($row['espera_seg'] ?? 0),
+                        ':duracion_seg' => (int) ($row['duracion_seg'] ?? 0),
+                    ]
+                );
+                $counts['estadisticas']++;
+            } catch (\Throwable $e) {
+                // Skip
+            }
+        }
+
+        // --- 5. llamadasReal → cdr_llamadas_real ---
+        $llamadasReal = $datos['llamadasReal'] ?? [];
+        $counts['real'] = 0;
+        foreach ($llamadasReal as $row) {
+            if (empty($row['linkedid'])) continue;
+            try {
+                $db->execute(
+                    "INSERT INTO cdr_llamadas_real
+                        (tenant_id, pbx_id, linkedid, fecha_inicio, fecha_fin,
+                         total_segmentos, duracion_total, tiempo_total_conversacion)
+                     VALUES
+                        (:tenant_id, :pbx_id, :linkedid, :fecha_inicio, :fecha_fin,
+                         :total_segmentos, :duracion_total, :tiempo_total_conversacion)
+                     ON DUPLICATE KEY UPDATE
+                        fecha_inicio = VALUES(fecha_inicio), fecha_fin = VALUES(fecha_fin),
+                        total_segmentos = VALUES(total_segmentos), duracion_total = VALUES(duracion_total),
+                        tiempo_total_conversacion = VALUES(tiempo_total_conversacion)",
+                    [
+                        ':tenant_id' => $tenantId,
+                        ':pbx_id' => $pbxId,
+                        ':linkedid' => $row['linkedid'],
+                        ':fecha_inicio' => $row['fecha_inicio'] ?? null,
+                        ':fecha_fin' => $row['fecha_fin'] ?? null,
+                        ':total_segmentos' => (int) ($row['total_segmentos'] ?? 0),
+                        ':duracion_total' => (int) ($row['duracion_total'] ?? 0),
+                        ':tiempo_total_conversacion' => (int) ($row['tiempo_total_conversacion'] ?? 0),
+                    ]
+                );
+                $counts['real']++;
+            } catch (\Throwable $e) {
+                // Skip
+            }
+        }
+
+        // Broadcast cdr_report event if EventBridge is ready
+        $bridge = EventBridge::getInstance();
+        if ($bridge->isReady()) {
+            $bridge->broadcastCallEvent($tenantId, 'cdr_report', [
+                'counts' => $counts,
+                'pbx_id' => $pbxId,
+            ]);
+        }
+
+        Response::created(['counts' => $counts], 'CDR Report procesado');
     }
 
     /**

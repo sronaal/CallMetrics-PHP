@@ -18,128 +18,106 @@ $extraJs = [BASE_URL . 'assets/js/ws-client.js', BASE_URL . 'assets/js/cdr.js'];
 
 ob_start();
 
-/* ---- Data source: API with mock fallback ---- */
-$client = ApiClient::getInstance();
+/* ---- Data source: CDR Report API (agente-collector nested datasets) ---- */
 $desde = trim((string) ($_GET['desde'] ?? ''));
 $hasta = trim((string) ($_GET['hasta'] ?? ''));
 
-$apiParams = ['page' => 0, 'size' => 1000];
-if ($desde !== '') $apiParams['fecha_inicio'] = $desde . ' 00:00:00';
-if ($hasta !== '') $apiParams['fecha_fin'] = $hasta . ' 23:59:59';
+$filters = [];
+if ($desde !== '') $filters['fecha_inicio'] = $desde . ' 00:00:00';
+if ($hasta !== '') $filters['fecha_fin'] = $hasta . ' 23:59:59';
 
-$apiCdr = $client->get('/llamadas', $apiParams);
-$useApi = !empty($apiCdr['success']) && isset($apiCdr['data']) && is_array($apiCdr['data']);
+/* KPI stats from cdr-report/stats */
+$apiStats = api_get_cdr_stats();
+$statsData = (!empty($apiStats['success']) && isset($apiStats['data'])) ? $apiStats['data'] : [];
+
+/* Tab Llamadas: paginated individual calls */
+$page = max(1, (int) ($_GET['page'] ?? 1));
+$per = 10;
+$apiCdrLlamadas = api_get_cdr_llamadas($page - 1, $per, $filters);
+$useApi = !empty($apiCdrLlamadas['success']) && isset($apiCdrLlamadas['data']);
+$totalFromApi = 0;
+if ($useApi && isset($apiCdrLlamadas['meta'])) {
+    $totalFromApi = (int) ($apiCdrLlamadas['meta']['total'] ?? 0);
+}
 
 $cdr = [];
-$colas = [];
-$agentesCc = [];
-$reportes = [];
-
 if ($useApi) {
-    /* Fetch agents, colas, extensions for name resolution */
-    $apiAgentes = $client->get('/agentes', ['page' => 0, 'size' => 1000]);
-    $apiColasResult = $client->get('/colas', ['page' => 0, 'size' => 100]);
-    $apiExt = $client->get('/extensiones', ['page' => 0, 'size' => 100]);
-
-    $mapaExt = [];
-    if (!empty($apiExt['success']) && isset($apiExt['data'])) {
-        foreach ($apiExt['data'] as $e) { $mapaExt[$e['id']] = $e['numero']; }
-    }
-
-    $mapaExtAgente = [];
-    $estadoMapAgent = ['DISPONIBLE' => 'active', 'EN_LLAMADA' => 'on-call', 'OCUPADO' => 'break', 'DESCONECTADO' => 'offline'];
-    if (!empty($apiAgentes['success']) && isset($apiAgentes['data'])) {
-        foreach ($apiAgentes['data'] as $a) {
-            $extNum = $mapaExt[$a['extension_id']] ?? (string) ($a['extension_id'] ?? '');
-            if ($extNum) {
-                $mapaExtAgente[$extNum] = ['nombre' => $a['nombre'], 'cola_id' => $a['cola_id'] ?? null];
-            }
-            $agentesCc[] = [
-                'id' => $a['id'], 'nombre' => $a['nombre'], 'extension' => $extNum,
-                'cola_id' => $a['cola_id'] ?? null,
-                'estado' => $estadoMapAgent[$a['estado']] ?? strtolower($a['estado'] ?? 'offline'),
-            ];
-        }
-    }
-
-    $mapaColas = [];
-    if (!empty($apiColasResult['success']) && isset($apiColasResult['data'])) {
-        foreach ($apiColasResult['data'] as $c) {
-            $mapaColas[$c['id']] = $c['nombre'];
-            $estadoMapCola = ['ACTIVA' => 'active', 'PAUSADA' => 'paused', 'INACTIVA' => 'inactive'];
-            $colas[] = [
-                'id' => $c['id'], 'nombre' => $c['nombre'],
-                'en_espera' => $c['llamadas_enespera'] ?? 0,
-                'nivel_servicio_pct' => 0, 'llamadas_hora' => 0,
-                'estado' => $estadoMapCola[$c['estado']] ?? strtolower($c['estado'] ?? 'inactive'),
-                'espera_max' => 0,
-            ];
-        }
-    }
-
-    $estadoMapCdr = ['ANSWERED' => 'answered', 'NOANSWER' => 'abandoned', 'BUSY' => 'busy', 'FAILED' => 'failed', 'CANCELLED' => 'cancelled'];
-    foreach ($apiCdr['data'] as $r) {
-        $extOrig = $r['extension_origen'] ?? '';
-        $agenteNombre = '—';
-        $colaNombre = '—';
-        if ($extOrig && isset($mapaExtAgente[$extOrig])) {
-            $agenteNombre = $mapaExtAgente[$extOrig]['nombre'];
-            $colaId = $mapaExtAgente[$extOrig]['cola_id'];
-            if ($colaId && isset($mapaColas[$colaId])) { $colaNombre = $mapaColas[$colaId]; }
-        }
+    $estadoMapCdr = ['ANSWERED' => 'answered', 'NOANSWER' => 'abandoned', 'BUSY' => 'busy',
+        'FAILED' => 'failed', 'CANCELLED' => 'cancelled', 'NO ANSWER' => 'abandoned',
+        'CONGESTION' => 'busy', 'CHANUNAVAIL' => 'failed', 'ANSWER' => 'answered'];
+    foreach ($apiCdrLlamadas['data'] as $r) {
         $cdr[] = [
             'id' => $r['id'],
-            'fecha' => strtotime($r['inicio_llamada'] ?? 'now'),
+            'fecha' => strtotime($r['fecha_inicio'] ?? 'now'),
             'origen' => $r['numero_origen'] ?? '',
-            'destino' => $r['numero_destino'] ?? '',
-            'cola' => $colaNombre,
-            'agente' => $agenteNombre,
-            'duracion' => $r['duracion'] ?? 0,
-            'resultado' => $estadoMapCdr[$r['estado']] ?? strtolower($r['estado'] ?? 'unknown'),
+            'destino' => $r['destino_inicial'] ?? '',
+            'cola' => $r['nombre_cola'] ?? '—',
+            'agente' => $r['nombre_agente'] ?? '—',
+            'duracion' => (int) ($r['tiempo_conversacion'] ?? 0),
+            'resultado' => $estadoMapCdr[$r['estado_final']] ?? strtolower($r['estado_final'] ?? 'unknown'),
         ];
     }
 }
 
-/* Métricas del header */
-$totalLlamadas = count($cdr);
-$answered = count(array_filter($cdr, fn($c) => $c['resultado'] === 'answered'));
-$efectividad = $totalLlamadas > 0 ? round($answered / $totalLlamadas * 100) : 0;
-
-/* Tab Llamadas: paginación */
-$page = max(1, (int) ($_GET['page'] ?? 1));
-$per = 10;
-$pages = (int) ceil($totalLlamadas / $per);
-$cdrRows = array_slice($cdr, ($page - 1) * $per, $per);
-$basePaginacion = BASE_URL . 'callcenter/cdr.php?desde=' . rawurlencode($desde) . '&hasta=' . rawurlencode($hasta) . '&';
-
-/* Tab Colas: agregación por cola (atendidas/abandonadas/total/SLA/espera prom) */
+/* Tab Colas: aggregated queue stats */
+$apiColas = api_get_cdr_colas();
 $resumenColas = [];
-foreach ($colas as $c) {
-    $atendidas = count(array_filter($cdr, fn($x) => $x['cola'] === $c['nombre'] && $x['resultado'] === 'answered'));
-    $abandonadas = count(array_filter($cdr, fn($x) => $x['cola'] === $c['nombre'] && $x['resultado'] === 'abandoned'));
-    $resumenColas[] = [
-        'nombre' => $c['nombre'], 'atendidas' => $atendidas, 'abandonadas' => $abandonadas,
-        'sla_pct' => $c['nivel_servicio_pct'], 'espera_prom' => $c['espera_max'],
-    ];
+if (!empty($apiColas['success']) && isset($apiColas['data'])) {
+    foreach ($apiColas['data'] as $c) {
+        $resumenColas[] = [
+            'nombre' => $c['numero_cola'] ?? '—',
+            'atendidas' => (int) ($c['contestadas'] ?? 0),
+            'abandonadas' => (int) ($c['no_contestadas'] ?? 0),
+            'sla_pct' => (float) ($c['porcentaje_efectividad'] ?? 0),
+            'espera_prom' => (int) ($c['promedio_espera'] ?? 0),
+        ];
+    }
 }
 
-/* Tab Agentes: agregación por agente */
+/* Tab Agentes: aggregated agent stats */
+$apiAgentesRes = api_get_cdr_agentes();
 $resumenAgentes = [];
-foreach ($agentesCc as $a) {
-    $agenteCdr = array_filter($cdr, fn($x) => $x['agente'] === substr($a['nombre'], 0, strpos($a['nombre'], ' ')));
-    $agenteCdr = array_values($agenteCdr);
-    $atendidas = count(array_filter($agenteCdr, fn($x) => $x['resultado'] === 'answered'));
-    $totalAg = count($agenteCdr);
-    $sumDur = array_sum(array_map(fn($x) => (int) $x['duracion'], $agenteCdr));
-    $resumenAgentes[] = [
-        'nombre' => $a['nombre'], 'atendidas' => $atendidas, 'total' => $totalAg,
-        'aht' => $atendidas > 0 ? (int) round($sumDur / $atendidas) : 0,
-        'efectividad' => $totalAg > 0 ? round($atendidas / $totalAg * 100) : 0,
-    ];
+if (!empty($apiAgentesRes['success']) && isset($apiAgentesRes['data'])) {
+    foreach ($apiAgentesRes['data'] as $a) {
+        $totalAg = (int) ($a['total_llamadas'] ?? 0);
+        $atendidas = (int) ($a['contestadas'] ?? 0);
+        $resumenAgentes[] = [
+            'nombre' => $a['nombre_agente'] ?? $a['extension_agente'] ?? '—',
+            'atendidas' => $atendidas,
+            'total' => $totalAg,
+            'aht' => (int) ($a['promedio_duracion'] ?? 0),
+            'efectividad' => (int) ($a['porcentaje_efectividad'] ?? 0),
+        ];
+    }
 }
 usort($resumenAgentes, fn($a, $b) => $b['atendidas'] <=> $a['atendidas']);
 
-/* Tab Global: reportes diarios */
+/* Tab Global: per-call queue stats */
+$apiEstadisticas = api_get_cdr_estadisticas(0, 200, $filters);
+$reportes = [];
+if (!empty($apiEstadisticas['success']) && isset($apiEstadisticas['data'])) {
+    foreach ($apiEstadisticas['data'] as $e) {
+        $reportes[] = [
+            'fecha' => strtotime($e['fecha_entrada'] ?? 'now'),
+            'cola' => $e['numero_cola'] ?? '—',
+            'llamadas' => 1,
+            'atendidas' => in_array(strtoupper($e['estado_final'] ?? ''), ['ANSWERED','ANSWER']) ? 1 : 0,
+            'abandonadas' => in_array(strtoupper($e['estado_final'] ?? ''), ['NOANSWER','NO ANSWER','CANCELLED']) ? 1 : 0,
+            'sla_pct' => (int) ($e['duracion_seg'] ?? 0) > 0 ? 100 : 0,
+        ];
+    }
+}
+
+/* Derived metrics for KPI cards */
+$totalLlamadas = (int) ($statsData['total_llamadas'] ?? 0);
+$answered = (int) ($statsData['contestadas'] ?? 0);
+$efectividad = (int) ($statsData['efectividad'] ?? 0);
+$totalColas = (int) ($statsData['total_colas'] ?? 0);
+$totalAgentes = (int) ($statsData['total_agentes'] ?? 0);
+
+/* Tab Llamadas: pagination */
+$pages = $totalFromApi > 0 ? (int) ceil($totalFromApi / $per) : 1;
+$basePaginacion = BASE_URL . 'callcenter/cdr.php?desde=' . rawurlencode($desde) . '&hasta=' . rawurlencode($hasta) . '&';
 ?>
 
 <div class="page-header d-flex align-items-center justify-content-between mb-3">
@@ -152,8 +130,8 @@ usort($resumenAgentes, fn($a, $b) => $b['atendidas'] <=> $a['atendidas']);
 <!-- Métricas -->
 <div class="cm-kpi-row">
     <?= cm_render_stat_card('Llamadas', $totalLlamadas, '#4f6ef7', 'bi-telephone') ?>
-    <?= cm_render_stat_card('Colas', count($resumenColas), '#a78bfa', 'bi-list-ul') ?>
-    <?= cm_render_stat_card('Agentes', count($agentesCc), '#10b981', 'bi-people') ?>
+    <?= cm_render_stat_card('Colas', $totalColas, '#a78bfa', 'bi-list-ul') ?>
+    <?= cm_render_stat_card('Agentes', $totalAgentes, '#10b981', 'bi-people') ?>
     <?= cm_render_stat_card('Efectividad', $efectividad . '%', '#f59e0b', 'bi-bullseye') ?>
 </div>
 
@@ -184,8 +162,8 @@ usort($resumenAgentes, fn($a, $b) => $b['atendidas'] <=> $a['atendidas']);
             <table class="dash-table" id="cdrTable">
                 <?= cm_render_table_headers(['Fecha', 'Origen', 'Destino', 'Cola', 'Agente', 'Duración', 'Resultado']) ?>
                 <tbody>
-                    <?php if ($cdrRows): ?>
-                        <?php foreach ($cdrRows as $c): ?>
+                    <?php if ($cdr): ?>
+                        <?php foreach ($cdr as $c): ?>
                             <tr>
                                 <td class="cell-pbx"><?= htmlspecialchars(cm_format_date($c['fecha'])) ?></td>
                                 <td class="cell-origin"><?= htmlspecialchars($c['origen']) ?></td>

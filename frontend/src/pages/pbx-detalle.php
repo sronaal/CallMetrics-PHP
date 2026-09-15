@@ -2,11 +2,13 @@
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../core/Config.php';
 require_once __DIR__ . '/../core/Session.php';
+require_once __DIR__ . '/../core/ApiClient.php';
+require_once __DIR__ . '/../core/ApiClientHelpers.php';
 require_once __DIR__ . '/../core/AuthMiddleware.php';
-require_once SRC_PATH . '/data/mock.php';
 require_once SRC_PATH . '/components/components.php';
 
 AuthMiddleware::check();
+Session::touch();
 
 $title = 'Detalle PBX';
 $activeNav = 'pbx';
@@ -15,18 +17,17 @@ $extraJs = [];
 
 ob_start();
 
-/* ---------------- Datos ---------------- */
+/* ---------------- Datos desde API real ---------------- */
 $pbxId = max(1, (int) ($_GET['id'] ?? 1));
-$pbxs = cm_pbx();
-$pbx = null;
-foreach ($pbxs as $p) {
-    if ((int) $p['id'] === $pbxId) { $pbx = $p; break; }
-}
+
+// Obtener PBX desde el backend
+$pbxResponse = api_get_pbx_detail($pbxId);
+$pbx = ($pbxResponse['success'] && $pbxResponse['data']) ? $pbxResponse['data'] : null;
 
 if ($pbx === null) {
     echo '<div class="dashboard-card p-4">';
     echo '<h2 class="h4 mb-2">PBX no encontrado</h2>';
-    echo '<p class="text-muted mb-3">El servidor solicitado no existe o fue eliminado.</p>';
+    echo '<p class="text-muted mb-3">' . htmlspecialchars($pbxResponse['message'] ?? 'El servidor solicitado no existe o fue eliminado.') . '</p>';
     echo '<a class="btn btn-primary btn-sm" href="' . BASE_URL . 'pbx.php"><i class="bi bi-arrow-left me-1"></i>Volver a Centrales PBX</a>';
     echo '</div>';
     $content = ob_get_clean();
@@ -34,34 +35,53 @@ if ($pbx === null) {
     return;
 }
 
-/* Heartbeats del PBX (últimos, descendente por timestamp) */
-$heartbeats = array_values(array_filter(cm_heartbeats(), fn($h) => (int) $h['pbx_id'] === $pbxId));
-usort($heartbeats, fn($a, $b) => strcmp((string) $b['timestamp'], (string) $a['timestamp']));
-$totalHb = count($heartbeats);
+// Heartbeats from eventos API (HEALTH type, heartbeat event)
 $page = max(1, (int) ($_GET['page'] ?? 1));
 $per = 15;
-$pages = (int) ceil($totalHb / $per);
-$hbRows = array_slice($heartbeats, ($page - 1) * $per, $per);
+$hbResponse = api_get_eventos_pbx($pbxId, $page - 1, $per);
+$hbRaw = $hbResponse['data'] ?? [];
+$totalHb = $hbResponse['meta']['total'] ?? count($hbRaw);
+$pages = max(1, (int) ceil($totalHb / $per));
 $basePaginacion = BASE_URL . 'pbx-detalle.php?id=' . $pbxId . '&';
 
-/* Llamadas del día (suma de reportes) */
-$llamadasDia = 0;
-foreach (cm_reportes_diarios() as $r) { $llamadasDia += (int) $r['llamadas']; }
+// Transform heartbeat events to match table template expectations
+$hbRows = [];
+foreach ($hbRaw as $ev) {
+    $contenido = $ev['contenido'] ?? [];
+    if (is_string($contenido)) $contenido = json_decode($contenido, true);
+    if (!is_array($contenido)) continue;
 
-$estadoTxt = match ($pbx['estado']) { 'online' => 'En línea', 'degraded' => 'Degradado', default => 'Sin conexión' };
-$versionTxt = $pbx['version'] !== '' ? $pbx['version'] : 'Sin datos';
+    $sistema = $contenido['sistema'] ?? [];
+    $ami = $contenido['conexion_ami'] ?? [];
+
+    $hbRows[] = [
+        'timestamp' => strtotime($ev['created_at'] ?? $ev['updated_at'] ?? 'now'),
+        'estado'    => ($ami['conectado'] ?? false) ? 'online' : 'offline',
+        'latencia'  => 0,
+        'perdida_pct' => ($ami['conectado'] ?? false) ? 0 : 100,
+        'cpu'       => (int) ($sistema['cpu_porcentaje'] ?? 0),
+        'ram'       => (int) ($sistema['ram_porcentaje'] ?? 0),
+        'disco'     => (int) ($sistema['disco_porcentaje'] ?? 0),
+        'servidor'  => $sistema['hostname'] ?? ($contenido['pbx_host'] ?? '—'),
+    ];
+}
+
+// Use latest heartbeat for stats
+$ultimo = $hbRows[0] ?? null;
+
+$llamadasDia = (int) ($pbx['llamadas_hoy'] ?? 0);
+$uptime = (int) ($pbx['uptime'] ?? 0);
+
+$estadoRaw = strtolower($pbx['estado'] ?? 'offline');
+$estadoTxt = match ($estadoRaw) { 'online' => 'En línea', 'degraded' => 'Degradado', default => 'Sin conexión' };
+$versionTxt = ($pbx['version'] ?? '') !== '' ? $pbx['version'] : 'Sin datos';
 
 $stats = [
-    ['label' => 'Uptime', 'value' => cm_format_duration($pbx['uptime']), 'icon' => 'bi-arrow-up-short', 'clase' => ''],
+    ['label' => 'Uptime', 'value' => cm_format_duration($uptime), 'icon' => 'bi-arrow-up-short', 'clase' => ''],
     ['label' => 'Llamadas hoy', 'value' => number_format($llamadasDia), 'icon' => 'bi-telephone', 'clase' => ''],
-    ['label' => 'CPU', 'value' => '—', 'icon' => 'bi-cpu', 'clase' => 'text-muted'],
-    ['label' => 'RAM', 'value' => '—', 'icon' => 'bi-memory', 'clase' => 'text-muted'],
+    ['label' => 'CPU', 'value' => $ultimo ? ((int) $ultimo['cpu'] . '%') : '—', 'icon' => 'bi-cpu', 'clase' => $ultimo && (int)$ultimo['cpu'] >= 90 ? 'text-danger' : ''],
+    ['label' => 'RAM', 'value' => $ultimo ? ((int) $ultimo['ram'] . '%') : '—', 'icon' => 'bi-memory', 'clase' => $ultimo && (int)$ultimo['ram'] >= 90 ? 'text-danger' : ''],
 ];
-$ultimo = $hbRows[0] ?? null;
-if ($ultimo) {
-    $stats[2]['value'] = (int) $ultimo['cpu'] . '%';
-    $stats[3]['value'] = (int) $ultimo['ram'] . '%';
-}
 ?>
 
 <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
@@ -88,8 +108,8 @@ if ($ultimo) {
         <div class="dashboard-card p-3 h-100">
             <h3 class="h6 mb-3">Datos del Servidor</h3>
             <dl class="row mb-0 small">
-                <dt class="col-4 text-muted">Host</dt><dd class="col-8 mb-2 text-end"><?= htmlspecialchars($pbx['host']) ?></dd>
-                <dt class="col-4 text-muted">Puerto</dt><dd class="col-8 mb-2 text-end"><?= (int) $pbx['puerto'] ?></dd>
+                <dt class="col-4 text-muted">Host</dt><dd class="col-8 mb-2 text-end"><?= htmlspecialchars($pbx['ip_address']) ?></dd>
+                <dt class="col-4 text-muted">Puerto</dt><dd class="col-8 mb-2 text-end"><?= (int) $pbx['puerto_ami'] ?></dd>
                 <dt class="col-4 text-muted">Estado</dt><dd class="col-8 mb-2 text-end"><?= $estadoTxt ?></dd>
                 <dt class="col-4 text-muted">Versión</dt><dd class="col-8 mb-2 text-end"><?= htmlspecialchars($versionTxt) ?></dd>
                 <dt class="col-4 text-muted">Uptime</dt><dd class="col-8 mb-2 text-end"><?= htmlspecialchars(cm_format_duration($pbx['uptime'])) ?></dd>

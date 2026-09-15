@@ -167,3 +167,19 @@ function api_get_dashboard(): array
 {
     return ApiClient::getInstance()->get('/dashboard/summary');
 }
+
+function api_get_pbx_detail(int $id): array
+{
+    return ApiClient::getInstance()->get("/pbx/$id");
+}
+
+function api_get_eventos_pbx(int $pbxId, int $page = 0, int $size = 50): array
+{
+    return ApiClient::getInstance()->get('/eventos', [
+        'page' => $page,
+        'size' => $size,
+        'tipo' => 'HEALTH',
+        'evento' => 'heartbeat',
+        'pbx_id' => $pbxId,
+    ]);
+}

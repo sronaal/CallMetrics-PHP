@@ -53,6 +53,17 @@ class AgentIngestController extends Controller
         $data = $request->body();
         $db = Database::getInstance();
 
+        // Normalizar estado del agente (Python envía español: "activo", "error", etc.)
+        // La DB espera ENUM('ONLINE','OFFLINE','ERROR')
+        $estadoRaw = $data['estado'] ?? 'ONLINE';
+        $estado = match (strtolower($estadoRaw)) {
+            'activo', 'active', 'online'       => 'ONLINE',
+            'detenido', 'stopped', 'offline',
+            'deteniendo', 'deteniendose'         => 'OFFLINE',
+            'error', 'modo_seguro', 'safe_mode' => 'ERROR',
+            default                              => 'ONLINE',  // fallback seguro
+        };
+
         // Actualizar estado del PBX
         $db->execute(
             "UPDATE pbx SET
@@ -62,7 +73,7 @@ class AgentIngestController extends Controller
              WHERE id = :id",
             [
                 ':id' => $pbx['id'],
-                ':estado' => $data['estado'] ?? 'ONLINE'
+                ':estado' => $estado
             ]
         );
 
@@ -81,7 +92,7 @@ class AgentIngestController extends Controller
         $bridge = EventBridge::getInstance();
         if ($bridge->isReady()) {
             $bridge->broadcastPbxHealth((int) $pbx['id'], [
-                'estado' => $data['estado'] ?? 'ONLINE',
+                'estado' => $estado,
                 'uptime' => $data['uptime'] ?? null,
                 'active_channels' => $data['active_channels'] ?? null,
                 'conexion_ami' => $data['conexion_ami'] ?? null,

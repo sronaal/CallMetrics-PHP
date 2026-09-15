@@ -140,17 +140,14 @@ class PbxController extends Controller
             Response::notFound('Servidor PBX no encontrado');
         }
 
-        $db = \CallMetrics\Core\Database::getInstance();
-
-        // Eliminar datos asociados (eventos, llamadas, extensiones, colas, agentes)
-        $db->execute("DELETE FROM eventos WHERE pbx_id = :pbx_id", [':pbx_id' => $id]);
-        $db->execute("DELETE FROM llamadas_cdr WHERE pbx_id = :pbx_id", [':pbx_id' => $id]);
-        $db->execute("DELETE FROM extensiones WHERE pbx_id = :pbx_id", [':pbx_id' => $id]);
-        $db->execute("DELETE FROM colas WHERE pbx_id = :pbx_id", [':pbx_id' => $id]);
-        $db->execute("DELETE FROM agentes WHERE pbx_id = :pbx_id", [':pbx_id' => $id]);
-
-        // Eliminar el PBX
-        Pbx::delete($id);
+        try {
+            // Foreign keys handle cascade: eventos, llamadas_cdr, extensiones, colas
+            // all have ON DELETE CASCADE → pbx. Agentes uses ON DELETE SET NULL on
+            // cola_id and extension_id. No manual child deletion needed.
+            Pbx::delete($id);
+        } catch (\PDOException $e) {
+            Response::error('Error al eliminar: ' . $e->getMessage(), 500);
+        }
 
         Response::ok(null, 'Servidor PBX eliminado correctamente');
     }

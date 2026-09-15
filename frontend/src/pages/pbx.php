@@ -207,13 +207,15 @@ $basePaginacion = BASE_URL . 'pbx.php?' . http_build_query(array_filter(['q' => 
         return new Promise(function(resolve, reject) {
             var xhr = new XMLHttpRequest();
             xhr.open(method, API_BASE + path, true);
-            xhr.setRequestHeader('Content-Type', 'application/json');
+            if (data) {
+                xhr.setRequestHeader('Content-Type', 'application/json');
+            }
             if (TOKEN) xhr.setRequestHeader('Authorization', 'Bearer ' + TOKEN);
             xhr.onload = function() {
                 try { resolve(JSON.parse(xhr.responseText)); }
-                catch(e) { reject(e); }
+                catch(e) { reject(new Error('Respuesta no válida del servidor')); }
             };
-            xhr.onerror = function() { reject(new Error('Network error')); };
+            xhr.onerror = function() { reject(new Error('Error de red')); };
             if (data) xhr.send(JSON.stringify(data));
             else xhr.send();
         });
@@ -258,10 +260,13 @@ $basePaginacion = BASE_URL . 'pbx.php?' . http_build_query(array_filter(['q' => 
     if (confirmBtn) {
         confirmBtn.addEventListener('click', function () {
             if (!deletePbxId) { return; }
+            confirmBtn.disabled = true;
+            confirmBtn.textContent = 'Eliminando...';
             apiRequest('DELETE', '/pbx/' + deletePbxId).then(function(result) {
                 if (result.success !== false) { window.location.reload(); }
                 else { alert(result.message || 'Error al eliminar'); }
-            }).catch(function() { alert('Error de conexion'); });
+            }).catch(function(err) { alert('Error: ' + (err.message || 'desconocido')); })
+              .finally(function() { confirmBtn.disabled = false; confirmBtn.textContent = 'Eliminar'; });
         });
     }
 

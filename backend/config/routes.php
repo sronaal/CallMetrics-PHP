@@ -34,6 +34,7 @@ return [
     ['GET',    '/api/pbx/{id}',          'PbxController@show',             true, 'ADMIN_TENANT'],
     ['POST',   '/api/pbx',               'PbxController@store',            true, 'ADMIN_TENANT'],
     ['PUT',    '/api/pbx/{id}',          'PbxController@update',           true, 'ADMIN_TENANT'],
+    ['DELETE', '/api/pbx/{id}',          'PbxController@destroy',          true, 'ADMIN_TENANT'],
     ['PATCH',  '/api/pbx/{id}/toggle',   'PbxController@toggle',           true, 'ADMIN_TENANT'],
 
     // Extensiones routes (ADMIN_TENANT+)

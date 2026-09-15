@@ -117,14 +117,8 @@ $basePaginacion = BASE_URL . 'pbx.php?' . http_build_query(array_filter(['q' => 
                                placeholder="5038" min="1" max="65535" value="5038">
                         <div class="invalid-feedback" id="pbxPuertoError">El puerto debe estar entre 1 y 65535.</div>
                     </div>
-                    <div class="mb-2">
-                        <label class="form-label" for="pbxToken">Token de Agente <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="pbxToken" name="token_agente" required
-                               placeholder="token-seguro-unico">
-                        <div class="invalid-feedback">El token es obligatorio para autenticar el agente.</div>
-                    </div>
                     <p class="cm-reveal-hint mb-0 mt-3">
-                        IP, puerto, tipo y versión se completan cuando el agente envía el primer heartbeat.
+                        El <code>AGENT_ID</code> y <code>TOKEN_REGISTRO</code> se generan automáticamente al registrar.
                     </p>
                 </div>
                 <div class="modal-footer">
@@ -146,7 +140,7 @@ $basePaginacion = BASE_URL . 'pbx.php?' . http_build_query(array_filter(['q' => 
             </div>
             <div class="modal-body">
                 <div class="mb-3">
-                    <label class="form-label">ID del PBX</label>
+                    <label class="form-label">ID del PBX (<code>PBX_ID</code>)</label>
                     <div class="cm-reveal-code">
                         <code id="revealPbxId">—</code>
                         <button type="button" class="cm-reveal-copy" data-copy="revealPbxId" title="Copiar ID"><i class="bi bi-copy"></i></button>
@@ -168,7 +162,7 @@ $basePaginacion = BASE_URL . 'pbx.php?' . http_build_query(array_filter(['q' => 
                 </div>
                 <p class="cm-reveal-hint mb-0">
                     Copie estos valores al archivo <code>.env</code> del agente en la PBX. El
-                    <code>AGENT_ID</code> y <code>TOKEN_REGISTRO</code> son únicos y solo se muestran ahora.
+                    <code>TOKEN_REGISTRO</code> solo se muestra una vez por seguridad.
                 </p>
             </div>
             <div class="modal-footer">
@@ -233,10 +227,9 @@ $basePaginacion = BASE_URL . 'pbx.php?' . http_build_query(array_filter(['q' => 
             var nombre = document.getElementById('pbxNombre').value.trim();
             var ip = document.getElementById('pbxHost').value.trim();
             var puerto = parseInt(document.getElementById('pbxPuerto').value) || 5038;
-            var token = document.getElementById('pbxToken').value.trim();
-            if (!nombre || !ip || !token) { return; }
+            if (!nombre || !ip) { return; }
 
-            apiRequest('POST', '/pbx', { nombre: nombre, ip_address: ip, puerto_ami: puerto, token_agente: token }).then(function(result) {
+            apiRequest('POST', '/pbx', { nombre: nombre, ip_address: ip, puerto_ami: puerto }).then(function(result) {
                 if (result.success !== false && result.data) {
                     document.getElementById('revealPbxId').textContent = result.data.id || '—';
                     document.getElementById('revealToken').textContent = result.data.token_registro || '—';

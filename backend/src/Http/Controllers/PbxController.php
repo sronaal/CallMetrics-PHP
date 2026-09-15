@@ -61,7 +61,8 @@ class PbxController extends Controller
     /**
      * POST /api/pbx
      *
-     * Crear un nuevo servidor PBX. Requiere: nombre, ip_address, token_agente.
+     * Crear un nuevo servidor PBX. Requiere: nombre, ip_address.
+     * Token de agente y agente_id se generan automáticamente.
      */
     public function store(Request $request): void
     {
@@ -70,7 +71,6 @@ class PbxController extends Controller
 
         if (empty($data['nombre'])) $errors['nombre'] = 'Nombre es requerido';
         if (empty($data['ip_address'])) $errors['ip_address'] = 'Dirección IP es requerida';
-        if (empty($data['token_agente'])) $errors['token_agente'] = 'Token de agente es requerido';
 
         if (!empty($errors)) {
             Response::error('Errores de validación', 422, $errors);
@@ -81,6 +81,10 @@ class PbxController extends Controller
             Response::error('Tenant no especificado', 400);
         }
 
+        // Generar UUIDs automáticamente para agente y token
+        $agenteId = self::generateUuid();
+        $tokenRegistro = self::generateUuid();
+
         $pbxId = Pbx::create([
             'tenant_id'    => $tenantId,
             'nombre'       => trim($data['nombre']),
@@ -89,14 +93,66 @@ class PbxController extends Controller
             'puerto_http'  => (int) ($data['puerto_http'] ?? 80),
             'tipo'         => strtoupper($data['tipo'] ?? 'ASTERISK'),
             'version'      => trim($data['version'] ?? ''),
-            'token_agente' => Pbx::hashToken(trim($data['token_agente'])),
+            'token_agente' => Pbx::hashToken($tokenRegistro),
+            'agente_id'    => $agenteId,
             'estado'       => 'OFFLINE',
             'activo'       => 1,
         ]);
 
         $pbx = Pbx::find($pbxId);
         unset($pbx['token_agente']);
+
+        // Agregar los valores generados para mostrar al usuario
+        $pbx['token_registro'] = $tokenRegistro;
+        $pbx['agent_id'] = $agenteId;
+
         Response::created($pbx, 'Servidor PBX creado correctamente');
+    }
+
+    /**
+     * Generar UUID v4 aleatorio.
+     */
+    private static function generateUuid(): string
+    {
+        if (function_exists('random_bytes')) {
+            $data = random_bytes(16);
+        } else {
+            $data = openssl_random_pseudo_bytes(16);
+        }
+
+        $data[6] = chr(ord($data[6]) & 0x0f | 0x40);
+        $data[8] = chr(ord($data[8]) & 0x3f | 0x80);
+
+        return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
+    }
+
+    /**
+     * DELETE /api/pbx/{id}
+     *
+     * Eliminar un servidor PBX y sus datos asociados.
+     */
+    public function destroy(Request $request): void
+    {
+        $id = (int) $request->param('id');
+        $pbx = Pbx::find($id);
+
+        if (!$pbx) {
+            Response::notFound('Servidor PBX no encontrado');
+        }
+
+        $db = \CallMetrics\Core\Database::getInstance();
+
+        // Eliminar datos asociados (eventos, llamadas, extensiones, colas, agentes)
+        $db->execute("DELETE FROM eventos WHERE pbx_id = :pbx_id", [':pbx_id' => $id]);
+        $db->execute("DELETE FROM llamadas_cdr WHERE pbx_id = :pbx_id", [':pbx_id' => $id]);
+        $db->execute("DELETE FROM extensiones WHERE pbx_id = :pbx_id", [':pbx_id' => $id]);
+        $db->execute("DELETE FROM colas WHERE pbx_id = :pbx_id", [':pbx_id' => $id]);
+        $db->execute("DELETE FROM agentes WHERE pbx_id = :pbx_id", [':pbx_id' => $id]);
+
+        // Eliminar el PBX
+        Pbx::delete($id);
+
+        Response::ok(null, 'Servidor PBX eliminado correctamente');
     }
 
     /**

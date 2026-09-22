@@ -13,18 +13,32 @@
     else { document.addEventListener('DOMContentLoaded', fn); }
   }
 
+  function showTab(targetId) {
+    document.querySelectorAll('.cm-tab').forEach(function (t) {
+      t.classList.toggle('active', t.getAttribute('data-target') === targetId);
+    });
+    document.querySelectorAll('.cm-tab-panel').forEach(function (p) {
+      p.classList.toggle('d-none', p.id !== targetId);
+    });
+  }
+
+  function getParam(name) {
+    return new URLSearchParams(window.location.search).get(name);
+  }
+
   domReady(function () {
+    /* ---- Tab URL sync: si la URL trae ?tab=X, abrir ese tab ---- */
+    var initialTab = getParam('tab');
+    if (initialTab) {
+      var targetId = 'cdrPanel' + initialTab.charAt(0).toUpperCase() + initialTab.slice(1);
+      var el = document.getElementById(targetId);
+      if (el) showTab(targetId);
+    }
+
     /* ---- Tabs CDR ---- */
     document.querySelectorAll('.cm-tab').forEach(function (tab) {
       tab.addEventListener('click', function () {
-        var target = tab.getAttribute('data-target');
-        document.querySelectorAll('.cm-tab').forEach(function (t) { t.classList.remove('active'); });
-        tab.classList.add('active');
-        var panel = document.getElementById(target);
-        if (panel) {
-          document.querySelectorAll('.cm-tab-panel').forEach(function (p) { p.classList.add('d-none'); });
-          panel.classList.remove('d-none');
-        }
+        showTab(tab.getAttribute('data-target'));
       });
     });
 

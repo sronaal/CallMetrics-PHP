@@ -92,10 +92,14 @@ if (!empty($apiAgentesRes['success']) && isset($apiAgentesRes['data'])) {
 }
 usort($resumenAgentes, fn($a, $b) => $b['atendidas'] <=> $a['atendidas']);
 
-/* Tab Global: per-call queue stats */
-$apiEstadisticas = api_get_cdr_estadisticas(0, 200, $filters);
+/* Tab Global: per-call queue stats (paginated) */
+$globalPage = max(1, (int) ($_GET['globalPage'] ?? 1));
+$globalPer = 10;
+$apiEstadisticas = api_get_cdr_estadisticas($globalPage - 1, $globalPer, $filters);
 $reportes = [];
+$totalGlobalFromApi = 0;
 if (!empty($apiEstadisticas['success']) && isset($apiEstadisticas['data'])) {
+    $totalGlobalFromApi = (int) ($apiEstadisticas['meta']['total'] ?? 0);
     foreach ($apiEstadisticas['data'] as $e) {
         $reportes[] = [
             'fecha' => strtotime($e['fecha_entrada'] ?? 'now'),
@@ -107,6 +111,8 @@ if (!empty($apiEstadisticas['success']) && isset($apiEstadisticas['data'])) {
         ];
     }
 }
+$globalPages = $totalGlobalFromApi > 0 ? (int) ceil($totalGlobalFromApi / $globalPer) : 1;
+$basePaginacionGlobal = BASE_URL . 'callcenter/cdr.php?desde=' . rawurlencode($desde) . '&hasta=' . rawurlencode($hasta) . '&tab=global&';
 
 /* Derived metrics for KPI cards */
 $totalLlamadas = (int) ($statsData['total_llamadas'] ?? 0);
@@ -249,6 +255,9 @@ $basePaginacion = BASE_URL . 'callcenter/cdr.php?desde=' . rawurlencode($desde) 
                     <?php endforeach; ?>
                 </tbody>
             </table>
+        </div>
+        <div class="mt-3">
+            <?= cm_render_pagination($globalPage, $globalPages, $basePaginacionGlobal) ?>
         </div>
     </div>
 </div>

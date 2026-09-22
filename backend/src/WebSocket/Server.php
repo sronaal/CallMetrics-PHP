@@ -1,6 +1,34 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Servidor WebSocket para actualizaciones en tiempo real de CallMetric Pro.
+ *
+ * Implementa MessageComponentInterface de Ratchet para manejar conexiones
+ * WebSocket bidireccionales. Soporta dos tipos de cliente:
+ *
+ * Tipos de conexión:
+ *   - Agente collector: se identifica con X-Agent-ID en el handshake.
+ *     Puede ENVIAR eventos al servidor (procesa incoming events).
+ *   - Frontend/cliente: se identifica con JWT o token de sesión.
+ *     Solo SUSCRIBE y RECIBE broadcasts.
+ *
+ * Canales de suscripción:
+ *   - tenant_{id}: Actualizaciones generales del tenant
+ *   - pbx_{id}: Métricas y estado de un PBX específico
+ *   - colas_{id}: Estado de una cola de atención
+ *   - dashboard: KPIs y métricas del dashboard
+ *   - agent_{id}: Canal privado del agente (para ACKs)
+ *
+ * Eventos entrantes del agente (vía WS):
+ *   - agent_event: Evento AMI/CEL normalizado
+ *   - agent_heartbeat: Heartbeat del agente
+ *   - agent_cdr: Registro CDR
+ *   - agent_metric: Métrica de salud
+ *
+ * @package CallMetrics\WebSocket
+ */
+
 namespace CallMetrics\WebSocket;
 
 use Ratchet\MessageComponentInterface;
@@ -10,68 +38,90 @@ use CallMetrics\Models\Pbx;
 /**
  * Servidor WebSocket para actualizaciones en tiempo real.
  *
- * Tipos de conexion:
+ * Tipos de conexión:
  *   - Agente collector: se identifica con X-Agent-ID en el handshake.
  *     Puede ENVIAR eventos al servidor (procesa incoming events).
- *   - Frontend/cliente: se identifica con JWT o token de sesion.
+ *   - Frontend/cliente: se identifica con JWT o token de sesión.
  *     Solo SUSCRIBE y RECIBE broadcasts.
  *
- * Canales de suscripcion:
+ * Canales de suscripción:
  *   - tenant_{id}: Actualizaciones generales del tenant
- *   - pbx_{id}: Metricas y estado de un PBX especifico
- *   - colas_{id}: Estado de una cola de atencion
- *   - dashboard: KPIs y metricas del dashboard
+ *   - pbx_{id}: Métricas y estado de un PBX específico
+ *   - colas_{id}: Estado de una cola de atención
+ *   - dashboard: KPIs y métricas del dashboard
  *
- * Eventos entrantes del agente (via WS):
+ * Eventos entrantes del agente (vía WS):
  *   - agent_event: Evento AMI/CEL normalizado
  *   - agent_heartbeat: Heartbeat del agente
  *   - agent_cdr: Registro CDR
- *   - agent_metric: Metrica de salud
+ *   - agent_metric: Métrica de salud
  */
 class Server implements MessageComponentInterface
 {
-    /** @var array<string, array<ConnectionInterface>> Clientes suscritos por canal */
+    /**
+     * Clientes suscritos por canal.
+     *
+     * @var array<string, array<ConnectionInterface>>
+     */
     private array $channels = [];
 
-    /** @var array<int, array<string, true>> Canales suscritos por conexion */
+    /**
+     * Canales suscritos por conexión (inverso de $channels).
+     *
+     * @var array<int, array<string, true>>
+     */
     private array $subscriptions = [];
 
     /**
-     * Tipo de conexion:
-     *   'agent'   — agente collector (puede enviar eventos)
-     *   'client'  — frontend/dashboard (solo recibe broadcasts)
+     * Tipo de conexión por resourceId.
+     *
+     * 'agent'  — agente collector (puede enviar eventos)
+     * 'client' — frontend/dashboard (solo recibe broadcasts)
+     *
+     * @var array<int, string>
      */
     private array $connectionType = [];
 
     /**
      * ID del agente para conexiones de tipo agent.
+     *
      * key = resourceId, value = agente_id
+     *
+     * @var array<int, string>
      */
     private array $agentIds = [];
 
     /**
      * Tenant ID para conexiones de tipo client.
+     *
      * key = resourceId, value = tenant_id
+     *
+     * @var array<int, int>
      */
     private array $tenantIds = [];
 
     /**
-     * Manejar nueva conexion WebSocket.
+     * Manejar nueva conexión WebSocket.
      *
-     * Detecta si es un agente (X-Agent-ID header) o un frontend (JWT).
-     * Los agentes pueden enviar eventos; los frontends solo reciben.
+     * @description Detecta si es un agente (X-Agent-ID header) o un frontend (JWT).
+     *              Los agentes pueden enviar eventos; los frontends solo reciben.
+     *              Valida que el agente esté registrado y activo en la DB.
+     *
+     * @param ConnectionInterface $conn Conexión entrante de Ratchet.
+     *
+     * @return void
      */
     public function onOpen(ConnectionInterface $conn): void
     {
         $id = (int) $conn->resourceId;
         $this->subscriptions[$id] = [];
 
-        // Detectar tipo de conexion por headers del handshake HTTP
+        // Detectar tipo de conexión por headers del handshake HTTP
         $headers = $conn->httpRequest->getHeaders();
         $agenteId = $headers['X-Agent-ID'][0] ?? null;
 
         if ($agenteId) {
-            // Conexion de agente collector — verificar que esté registrado
+            // Conexión de agente collector — verificar que esté registrado
             $pbx = Pbx::findByAgenteId($agenteId);
             if (!$pbx || !$pbx['activo']) {
                 $conn->send(json_encode([
@@ -79,7 +129,7 @@ class Server implements MessageComponentInterface
                     'code' => 'AUTH_FAILED'
                 ]));
                 $conn->close();
-                echo "WS Rechazado: agente_id=$agenteId no valido\n";
+                echo "WS Rechazado: agente_id=$agenteId no válido\n";
                 return;
             }
 
@@ -99,7 +149,7 @@ class Server implements MessageComponentInterface
             echo "WS Agente conectado: $agenteId (PBX: {$pbx['id']})\n";
 
         } else {
-            // Conexion de frontend/cliente — por ahora se acepta sin JWT
+            // Conexión de frontend/cliente — por ahora se acepta sin JWT
             // TODO: validar JWT del query string o header
             $this->connectionType[$id] = 'client';
 
@@ -115,14 +165,20 @@ class Server implements MessageComponentInterface
     /**
      * Mensaje entrante desde un cliente.
      *
-     * Agentes pueden enviar: agent_event, agent_heartbeat, agent_cdr, agent_metric
-     * Clientes pueden enviar: subscribe, unsubscribe, ping
+     * @description Procesa mensajes JSON de clientes conectados. Los agentes
+     *              pueden enviar eventos (call, queue, cdr, heartbeat, sip, sistema).
+     *              Los clientes pueden suscribirse, desuscribirse o hacer ping.
+     *
+     * @param ConnectionInterface $from Conexión que envió el mensaje.
+     * @param string              $msg  Mensaje JSON codificado.
+     *
+     * @return void
      */
     public function onMessage(ConnectionInterface $from, $msg): void
     {
         $data = json_decode($msg, true);
         if (!$data) {
-            $from->send(json_encode(['error' => 'Mensaje invalido']));
+            $from->send(json_encode(['error' => 'Mensaje inválido']));
             return;
         }
 
@@ -136,22 +192,28 @@ class Server implements MessageComponentInterface
             return;
         }
 
-        // --- Clientes: suscripcion y control ---
+        // --- Clientes: suscripción y control ---
         $channel = $data['channel'] ?? '';
 
         match ($action) {
             'subscribe' => $this->subscribe($from, $channel),
             'unsubscribe' => $this->unsubscribe($from, $channel),
             'ping' => $from->send(json_encode(['action' => 'pong', 'time' => time()])),
-            default => $from->send(json_encode(['error' => 'Accion desconocida']))
+            default => $from->send(json_encode(['error' => 'Acción desconocida']))
         };
     }
 
     /**
      * Procesar mensaje de un agente collector.
      *
-     * El agente envía eventos normalizados por WS en vez de HTTP.
-     * El servidor los procesa: inserta en DB + broadcast a frontends.
+     * @description El agente envía eventos normalizados por WS en vez de HTTP.
+     *              El servidor los procesa: inserta en DB + broadcast a frontends.
+     *              Responde con un ACK a cada mensaje procesado.
+     *
+     * @param ConnectionInterface $from Conexión del agente.
+     * @param array               $data Datos del mensaje (debe contener 'tipo').
+     *
+     * @return void
      */
     private function handleAgentMessage(ConnectionInterface $from, array $data): void
     {
@@ -206,7 +268,15 @@ class Server implements MessageComponentInterface
 
     /**
      * Procesar evento de llamada del agente.
-     * Inserta en DB + broadcast al tenant.
+     *
+     * @description Almacena el evento en DB y determina el tipo de broadcast
+     *              basado en el estado de la llamada (ringing, answered, ended, update).
+     *              Emite el evento al canal del tenant.
+     *
+     * @param string $agenteId Identificador del agente collector.
+     * @param array  $data     Datos del evento (debe contener callid y/o datos con estado).
+     *
+     * @return void
      */
     private function processAgentCallEvent(string $agenteId, array $data): void
     {
@@ -236,6 +306,14 @@ class Server implements MessageComponentInterface
 
     /**
      * Procesar evento de cola del agente.
+     *
+     * @description Almacena el evento, emite broadcast al canal de la cola específica
+     *              (si se proporciona cola_id) y también al canal del tenant.
+     *
+     * @param string $agenteId Identificador del agente collector.
+     * @param array  $data     Datos del evento de cola.
+     *
+     * @return void
      */
     private function processAgentQueueEvent(string $agenteId, array $data): void
     {
@@ -265,6 +343,13 @@ class Server implements MessageComponentInterface
 
     /**
      * Procesar CDR del agente.
+     *
+     * @description Almacena el CDR completo y emite broadcast de call_ended al tenant.
+     *
+     * @param string $agenteId Identificador del agente collector.
+     * @param array  $data     Datos del CDR (callid, duración, estado final, etc.).
+     *
+     * @return void
      */
     private function processAgentCdrEvent(string $agenteId, array $data): void
     {
@@ -282,6 +367,14 @@ class Server implements MessageComponentInterface
 
     /**
      * Procesar heartbeat del agente.
+     *
+     * @description Actualiza el campo ultimo_heartbeat en la tabla pbx y emite
+     *              broadcast de salud al canal del PBX con las métricas reportadas.
+     *
+     * @param string $agenteId Identificador del agente collector.
+     * @param array  $data     Datos del heartbeat (estado, uptime, métricas, sistema).
+     *
+     * @return void
      */
     private function processAgentHeartbeat(string $agenteId, array $data): void
     {
@@ -307,6 +400,14 @@ class Server implements MessageComponentInterface
 
     /**
      * Almacenar evento genérico del agente en la tabla eventos.
+     *
+     * @description Inserta el evento completo (serializado como JSON) en la tabla
+     *              eventos con el tenant_id, pbx_id, tipo, evento y callid correspondientes.
+     *
+     * @param string $agenteId Identificador del agente collector.
+     * @param array  $data     Datos completos del evento a almacenar.
+     *
+     * @return void
      */
     private function storeAgentEvent(string $agenteId, array $data): void
     {
@@ -329,7 +430,15 @@ class Server implements MessageComponentInterface
     }
 
     /**
-     * Desconexion de un cliente — limpiar suscripciones.
+     * Desconexión de un cliente — limpiar suscripciones.
+     *
+     * @description Elimina todas las suscripciones del cliente desconectado de
+     *              los arrays internos para evitar memory leaks y mensajes a
+     *              conexiones cerradas.
+     *
+     * @param ConnectionInterface $conn Conexión que se cerró.
+     *
+     * @return void
      */
     public function onClose(ConnectionInterface $conn): void
     {
@@ -338,11 +447,19 @@ class Server implements MessageComponentInterface
         unset($this->connectionType[$id]);
         unset($this->agentIds[$id]);
         unset($this->tenantIds[$id]);
-        echo "Desconexion: {$conn->resourceId}\n";
+        echo "Desconexión: {$conn->resourceId}\n";
     }
 
     /**
-     * Error en la conexion.
+     * Error en la conexión.
+     *
+     * @description Registra el error en salida estándar y cierra la conexión
+     *              para liberar recursos.
+     *
+     * @param ConnectionInterface $conn Conexión con error.
+     * @param \Exception          $e    Excepción capturada.
+     *
+     * @return void
      */
     public function onError(ConnectionInterface $conn, \Exception $e): void
     {
@@ -352,6 +469,14 @@ class Server implements MessageComponentInterface
 
     /**
      * Suscribir un cliente a un canal.
+     *
+     * @description Registra la conexión en el canal especificado y notifica
+     *              al cliente con un mensaje 'subscribed'.
+     *
+     * @param ConnectionInterface $conn    Conexión del cliente.
+     * @param string              $channel Nombre del canal (ej: "tenant_5", "dashboard").
+     *
+     * @return void
      */
     private function subscribe(ConnectionInterface $conn, string $channel): void
     {
@@ -367,6 +492,14 @@ class Server implements MessageComponentInterface
 
     /**
      * Desuscribir un cliente de un canal.
+     *
+     * @description Elimina la conexión del canal y notifica al cliente con
+     *              un mensaje 'unsubscribed'.
+     *
+     * @param ConnectionInterface $conn    Conexión del cliente.
+     * @param string              $channel Nombre del canal.
+     *
+     * @return void
      */
     private function unsubscribe(ConnectionInterface $conn, string $channel): void
     {
@@ -382,6 +515,14 @@ class Server implements MessageComponentInterface
 
     /**
      * Enviar mensaje a todos los suscritos de un canal.
+     *
+     * @description Serializa $data como JSON y lo envía a cada conexión
+     *              registrada en el canal. No retorna error si el canal no existe.
+     *
+     * @param string $channel Nombre del canal destino.
+     * @param array  $data    Datos a enviar.
+     *
+     * @return void
      */
     public function broadcastToChannel(string $channel, array $data): void
     {
@@ -394,7 +535,14 @@ class Server implements MessageComponentInterface
     }
 
     /**
-     * Enviar actualizacion de dashboard a todos los tenants activos.
+     * Enviar actualización de dashboard a todos los tenants activos.
+     *
+     * @description Emite un evento 'dashboard_update' al canal "dashboard" con
+     *              los KPIs proporcionados y timestamp actual.
+     *
+     * @param array $data KPIs globales: llamadas totales, tasa de answer, SLA, etc.
+     *
+     * @return void
      */
     public function broadcastDashboard(array $data): void
     {
@@ -406,7 +554,16 @@ class Server implements MessageComponentInterface
     }
 
     /**
-     * Enviar evento de llamada a un tenant especifico.
+     * Enviar evento de llamada a un tenant específico.
+     *
+     * @description Emite un evento 'call_event' al canal "tenant_{id}" con el
+     *              tipo de evento y datos de la llamada.
+     *
+     * @param int    $tenantId Identificador del tenant.
+     * @param string $event    Tipo de evento: call_started, call_ended, call_ringing, call_answered.
+     * @param array  $data     Datos de la llamada.
+     *
+     * @return void
      */
     public function broadcastCallEvent(int $tenantId, string $event, array $data): void
     {
@@ -419,7 +576,15 @@ class Server implements MessageComponentInterface
     }
 
     /**
-     * Enviar actualizacion de PBX a suscritos.
+     * Enviar actualización de PBX a suscritos.
+     *
+     * @description Emite un evento 'pbx_health' al canal "pbx_{id}" con las
+     *              métricas de salud del PBX.
+     *
+     * @param int   $pbxId   Identificador del PBX.
+     * @param array $metrics Métricas de salud: estado, uptime, CPU, memoria, etc.
+     *
+     * @return void
      */
     public function broadcastPbxHealth(int $pbxId, array $metrics): void
     {
@@ -431,7 +596,15 @@ class Server implements MessageComponentInterface
     }
 
     /**
-     * Enviar actualizacion de cola.
+     * Enviar actualización de cola.
+     *
+     * @description Emite un evento 'queue_update' al canal "colas_{id}" con el
+     *              estado actual de la cola de atención.
+     *
+     * @param int   $queueId Identificador de la cola.
+     * @param array $data    Datos de la cola: evento, llamadas en espera, agentes, etc.
+     *
+     * @return void
      */
     public function broadcastQueueUpdate(int $queueId, array $data): void
     {

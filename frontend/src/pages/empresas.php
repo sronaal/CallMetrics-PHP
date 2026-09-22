@@ -94,6 +94,12 @@ $estados = ['active', 'trial', 'suspended'];
                                                 data-activo="<?= ($emp['activo'] ?? false) ? '1' : '0' ?>">
                                             <i class="bi bi-pencil"></i>
                                         </button>
+                                        <button type="button" class="cm-row-action cm-empresas-delete text-danger"
+                                                title="Eliminar empresa"
+                                                data-id="<?= (int) ($emp['id'] ?? 0) ?>"
+                                                data-nombre="<?= htmlspecialchars($emp['nombre'] ?? '', ENT_QUOTES) ?>">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
                                         <div class="form-check form-switch cm-user-switch ms-2" title="Activar o suspender la empresa">
                                             <input class="form-check-input cm-empresas-toggle" type="checkbox" role="switch"
                                                    id="empresaToggle<?= (int) ($emp['id'] ?? 0) ?>" <?= ($emp['activo'] ?? false) ? 'checked' : '' ?>>
@@ -198,9 +204,17 @@ $estados = ['active', 'trial', 'suspended'];
             return '<button type="button" class="cm-row-action cm-empresas-edit" ' +
                 'data-bs-toggle="modal" data-bs-target="#cmEmpresasModal" title="Editar empresa" ' +
                 'data-id="' + esc(data.id) + '" data-nombre="' + esc(data.nombre) + '" ' +
-                'data-nit="' + esc(data.nit || '') + '" data-plan="' + esc(data.plan) + '" ' +
+                'data-nit="' + esc(data.nit || '') + '" data-email="' + esc(data.email || '') + '" ' +
+                'data-plan="' + esc(data.plan) + '" ' +
                 'data-activo="' + esc(data.activo ? '1' : '0') + '">' +
                 '<i class="bi bi-pencil"></i></button>';
+        }
+
+        function deleteBtnHTML(data) {
+            return '<button type="button" class="cm-row-action cm-empresas-delete text-danger" ' +
+                'title="Eliminar empresa" data-id="' + esc(data.id) + '" ' +
+                'data-nombre="' + esc(data.nombre) + '">' +
+                '<i class="bi bi-trash"></i></button>';
         }
 
         function switchHTML(id, activo) {
@@ -262,6 +276,26 @@ $estados = ['active', 'trial', 'suspended'];
                 if (badge) {
                     if (sw.checked) { badge.className = 'cm-badge cm-badge-ok'; badge.textContent = 'Activo'; }
                     else { badge.className = 'cm-badge cm-badge-bad'; badge.textContent = 'Suspendida'; }
+                }
+            }).catch(function() { alert('Error de conexion'); });
+        });
+
+        /* Eliminar empresa → confirmacion + DELETE al backend */
+        document.addEventListener('click', function (e) {
+            var btn = e.target.closest('.cm-empresas-delete');
+            if (!btn) { return; }
+            var id = btn.getAttribute('data-id');
+            var nombre = btn.getAttribute('data-nombre');
+            if (!id) { return; }
+            if (!confirm('¿Está seguro de eliminar la empresa "' + nombre + '"?\n\nEsta acción eliminará todos los datos asociados (PBX, extensiones, colas, llamadas, etc.) y no se puede deshacer.')) {
+                return;
+            }
+            apiRequest('DELETE', '/tenants/' + id).then(function(result) {
+                if (result.success !== false) {
+                    var row = btn.closest('tr');
+                    if (row) row.remove();
+                } else {
+                    alert(result.message || 'Error al eliminar');
                 }
             }).catch(function() { alert('Error de conexion'); });
         });

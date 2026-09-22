@@ -74,7 +74,7 @@ $rolesDisponibles = ['SUPER_ADMIN', 'ADMIN_TENANT', 'SUPERVISOR', 'OPERADOR'];
                         <?php
                         $protegido = !$esSuperAdmin && in_array($u['rol'] ?? '', ['SUPER_ADMIN', 'ADMIN_TENANT'], true);
                         $editarTitle = $protegido ? 'No tiene permisos para modificar administradores' : 'Editar usuario';
-                        $empresaNombre = isset($empresasMap[$u['empresa_id'] ?? 0]) ? $empresasMap[$u['empresa_id']] : '—';
+                        $empresaNombre = isset($empresasMap[$u['tenant_id'] ?? 0]) ? $empresasMap[$u['tenant_id']] : '—';
                         $activo = $u['activo'] ?? ($u['estado'] === 'active');
                         ?>
                         <tr data-user-id="<?= (int) ($u['id'] ?? 0) ?>">
@@ -97,8 +97,15 @@ $rolesDisponibles = ['SUPER_ADMIN', 'ADMIN_TENANT', 'SUPERVISOR', 'OPERADOR'];
                                             data-nombre="<?= htmlspecialchars($u['nombre'] ?? '', ENT_QUOTES) ?>"
                                             data-email="<?= htmlspecialchars($u['email'] ?? '', ENT_QUOTES) ?>"
                                             data-rol="<?= htmlspecialchars($u['rol'] ?? '', ENT_QUOTES) ?>"
-                                            data-empresa="<?= (int) ($u['empresa_id'] ?? 0) ?>">
+                                            data-empresa="<?= (int) ($u['tenant_id'] ?? 0) ?>">
                                         <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button type="button" class="cm-row-action cm-users-delete text-danger"
+                                            <?= $protegido ? 'disabled' : '' ?>
+                                            title="<?= $protegido ? 'No tiene permisos' : 'Eliminar usuario' ?>"
+                                            data-id="<?= (int) ($u['id'] ?? 0) ?>"
+                                            data-nombre="<?= htmlspecialchars($u['nombre'] ?? '', ENT_QUOTES) ?>">
+                                        <i class="bi bi-trash"></i>
                                     </button>
                                     <div class="form-check form-switch cm-user-switch ms-2" title="<?= $protegido ? 'Requiere rol Super Admin' : 'Activar o desactivar usuario' ?>">
                                         <input class="form-check-input cm-users-toggle" type="checkbox" role="switch"
@@ -222,8 +229,15 @@ $rolesDisponibles = ['SUPER_ADMIN', 'ADMIN_TENANT', 'SUPERVISOR', 'OPERADOR'];
             'data-bs-toggle="modal" data-bs-target="#cmUsersModal" title="Editar usuario" ' +
             'data-id="' + esc(data.id) + '" data-usuario="' + esc(data.usuario) + '" ' +
             'data-nombre="' + esc(data.nombre) + '" data-email="' + esc(data.email) + '" ' +
-            'data-rol="' + esc(data.rol) + '" data-empresa="' + esc(data.empresa) + '">' +
+            'data-rol="' + esc(data.rol) + '" data-empresa="' + esc(data.tenant_id || '') + '">' +
             '<i class="bi bi-pencil"></i></button>';
+    }
+
+    function deleteBtnHTML(data) {
+        return '<button type="button" class="cm-row-action cm-users-delete text-danger" ' +
+            'title="Eliminar usuario" data-id="' + esc(data.id) + '" ' +
+            'data-nombre="' + esc(data.nombre) + '">' +
+            '<i class="bi bi-trash"></i></button>';
     }
 
     function switchHTML(id, activo) {
@@ -298,6 +312,26 @@ $rolesDisponibles = ['SUPER_ADMIN', 'ADMIN_TENANT', 'SUPERVISOR', 'OPERADOR'];
             if (badge) {
                 if (sw.checked) { badge.className = 'cm-badge cm-badge-ok'; badge.textContent = 'Activo'; }
                 else { badge.className = 'cm-badge cm-badge-muted'; badge.textContent = 'Inactivo'; }
+            }
+        }).catch(function() { alert('Error de conexion'); });
+    });
+
+    /* Eliminar usuario → confirmacion + DELETE al backend */
+    document.addEventListener('click', function (e) {
+        var btn = e.target.closest('.cm-users-delete');
+        if (!btn || btn.disabled) { return; }
+        var id = btn.getAttribute('data-id');
+        var nombre = btn.getAttribute('data-nombre');
+        if (!id) { return; }
+        if (!confirm('¿Está seguro de eliminar al usuario "' + nombre + '"?\n\nEsta acción no se puede deshacer.')) {
+            return;
+        }
+        apiRequest('DELETE', '/usuarios/' + id).then(function(result) {
+            if (result.success !== false) {
+                var row = btn.closest('tr');
+                if (row) row.remove();
+            } else {
+                alert(result.message || 'Error al eliminar');
             }
         }).catch(function() { alert('Error de conexion'); });
     });

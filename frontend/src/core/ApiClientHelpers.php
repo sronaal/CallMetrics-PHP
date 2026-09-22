@@ -33,6 +33,11 @@ function api_toggle_empresa(int $id): array
     return ApiClient::getInstance()->patch("/tenants/$id/toggle");
 }
 
+function api_delete_empresa(int $id): array
+{
+    return ApiClient::getInstance()->delete("/tenants/$id");
+}
+
 function api_get_usuarios(int $page = 0, int $size = 10, string $search = ''): array
 {
     $client = ApiClient::getInstance();

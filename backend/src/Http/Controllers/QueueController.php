@@ -7,15 +7,26 @@ use CallMetrics\Core\{Request, Response, TenantContext};
 use CallMetrics\Models\{Queue, Pbx};
 
 /**
- * Controlador CRUD para colas de atención.
- * Todos los endpoints requieren el rol ADMIN_TENANT.
+ * Clase QueueController
+ *
+ * Controlador CRUD para colas de atención. Todos los endpoints requieren
+ * el rol ADMIN_TENANT. Gestiona la creación, actualización y activación/
+ * desactivación de colas de llamadas con estrategia de distribución.
+ *
+ * @description Soporta filtrado por servidor PBX, búsqueda por nombre y
+ *              enriquecimiento con conteo de agentes asignados.
+ * @package CallMetrics\Http\Controllers
  */
 class QueueController extends Controller
 {
     /**
-     * GET /api/colas?page=0&size=10&search=&pbx_id=
-     *
      * Lista paginada de colas, filtrable por servidor PBX.
+     *
+     * @description Retorna una página de colas enriquecidas con el conteo de
+     *              agentes asignados a cada una.
+     *
+     * @param Request $request Solicitud con parámetros de query: page, size, search, pbx_id
+     * @return void Nunca retorna — termina con Response
      */
     public function index(Request $request): void
     {
@@ -40,9 +51,13 @@ class QueueController extends Controller
     }
 
     /**
-     * GET /api/colas/{id}
+     * Muestra el detalle de una cola con conteo de agentes asignados.
      *
-     * Detalle de una cola con conteo de agentes asignados.
+     * @description Retorna los datos de una cola por su ID, enriquecido con
+     *              el conteo de agentes asignados.
+     *
+     * @param Request $request Solicitud con parámetro de ruta: id
+     * @return void Nunca retorna — termina con Response
      */
     public function show(Request $request): void
     {
@@ -60,9 +75,14 @@ class QueueController extends Controller
     }
 
     /**
-     * POST /api/colas
+     * Crea una nueva cola de atención.
      *
-     * Crear una nueva cola de atención. Requiere: nombre, pbx_id.
+     * @description Valida campos requeridos (nombre, pbx_id), verifica que el PBX
+     *              exista y crea la cola con estrategia por defecto RINGALL y
+     *              tiempo máximo de espera de 300 segundos.
+     *
+     * @param Request $request Solicitud con datos de la cola en el body
+     * @return void Nunca retorna — termina con Response
      */
     public function store(Request $request): void
     {
@@ -106,9 +126,12 @@ class QueueController extends Controller
     }
 
     /**
-     * PUT /api/colas/{id}
+     * Actualiza una cola existente.
      *
-     * Actualizar una cola existente.
+     * @description Solo actualiza los campos proporcionados (no vacíos ni null).
+     *
+     * @param Request $request Solicitud con parámetro de ruta: id y datos en el body
+     * @return void Nunca retorna — termina con Response
      */
     public function update(Request $request): void
     {
@@ -137,9 +160,12 @@ class QueueController extends Controller
     }
 
     /**
-     * PATCH /api/colas/{id}/toggle
+     * Activa o desactiva una cola (toggle).
      *
-     * Activar/desactivar una cola.
+     * @description Alterna el estado activo de la cola (0 ↔ 1).
+     *
+     * @param Request $request Solicitud con parámetro de ruta: id
+     * @return void Nunca retorna — termina con Response
      */
     public function toggle(Request $request): void
     {

@@ -7,10 +7,16 @@ use CallMetrics\Core\{Config, Database, JwtHelper, Request, Response, TenantCont
 use CallMetrics\Models\{User, Tenant};
 
 /**
- * Controlador de autenticación — login, refresh, logout, me, password, primer-ingreso.
+ * Clase AuthController
  *
- * Todos los métodos aceptan un objeto Request y responden mediante helpers estáticos de Response.
- * La rotación de tokens siempre revoca el token de refresco anterior antes de guardar el nuevo.
+ * Controlador de autenticación — login, refresh, logout, me, password, primer-ingreso.
+ * Gestiona el ciclo completo de vida de autenticación JWT incluyendo rate limiting,
+ * rotación de tokens y flujo de primer ingreso para nuevos usuarios.
+ *
+ * @description Todos los métodos aceptan un objeto Request y responden mediante
+ *              helpers estáticos de Response. La rotación de tokens siempre revoca
+ *              el token de refresco anterior antes de guardar el nuevo.
+ * @package CallMetrics\Http\Controllers
  */
 class AuthController extends Controller
 {
@@ -19,10 +25,14 @@ class AuthController extends Controller
     // ---------------------------------------------------------------
 
     /**
-     * Autenticar un usuario y retornar el par de tokens de acceso + refresco.
+     * Autentica un usuario y retorna el par de tokens de acceso + refresco.
      *
-     * Rate limiting: 5 intentos fallidos por email+IP dentro de 15 minutos → 429.
-     * En caso de éxito: limpia intentos fallidos, actualiza ultimo_login, almacena hash del refresh.
+     * @description Implementa login con rate limiting (5 intentos fallidos por email+IP
+     *              dentro de 15 minutos → 429). Verifica credenciales, estado activo,
+     *              genera tokens JWT, almacena hash del refresh y actualiza ultimo_login.
+     *
+     * @param Request $request Solicitud con email y password en el body
+     * @return void Nunca retorna — termina con Response
      */
     public function login(Request $request): void
     {
@@ -104,9 +114,14 @@ class AuthController extends Controller
     // ---------------------------------------------------------------
 
     /**
-     * Rotar un token de refresco: revocar el anterior, emitir nuevo par de acceso + refresco.
+     * Rota un token de refresco: revoca el anterior, emite nuevo par de acceso + refresco.
      *
-     * Rotación de un solo uso — el token de refresco anterior no puede reutilizarse.
+     * @description Rotación de un solo uso — el token de refresco anterior no puede
+     *              reutilizarse. Utiliza una transacción atómica para garantizar
+     *              la consistencia de los datos.
+     *
+     * @param Request $request Solicitud con refreshToken en el body
+     * @return void Nunca retorna — termina con Response
      */
     public function refresh(Request $request): void
     {
@@ -190,7 +205,13 @@ class AuthController extends Controller
     // ---------------------------------------------------------------
 
     /**
-     * Revocar un token de refresco — el usuario necesitará iniciar sesión nuevamente.
+     * Revoca un token de refresco — el usuario necesitará iniciar sesión nuevamente.
+     *
+     * @description Marca el token de refresco como revocado en la base de datos.
+     *              El usuario deberá autenticarse nuevamente para obtener nuevos tokens.
+     *
+     * @param Request $request Solicitud con refreshToken en el body
+     * @return void Nunca retorna — termina con Response
      */
     public function logout(Request $request): void
     {
@@ -217,8 +238,13 @@ class AuthController extends Controller
     // ---------------------------------------------------------------
 
     /**
-     * Retornar los datos del usuario autenticado (sin password_hash)
-     * enriquecidos con el nombre de la empresa.
+     * Retorna los datos del usuario autenticado (sin password_hash) enriquecidos con el nombre de la empresa.
+     *
+     * @description Obtiene el perfil completo del usuario actual desde la base de datos,
+     *              elimina el campo sensible password_hash y adjunta el nombre de la empresa.
+     *
+     * @param Request $request Solicitud actual (no utiliza parámetros específicos)
+     * @return void Nunca retorna — termina con Response
      */
     public function me(Request $request): void
     {
@@ -244,7 +270,13 @@ class AuthController extends Controller
     // ---------------------------------------------------------------
 
     /**
-     * Cambiar la contraseña del usuario autenticado después de verificar la actual.
+     * Cambia la contraseña del usuario autenticado después de verificar la actual.
+     *
+     * @description Valida la contraseña actual, verifica que la nueva tenga al menos
+     *              6 caracteres, y actualiza el hash en la base de datos.
+     *
+     * @param Request $request Solicitud con currentPassword y newPassword en el body
+     * @return void Nunca retorna — termina con Response
      */
     public function changePassword(Request $request): void
     {
@@ -280,10 +312,14 @@ class AuthController extends Controller
     // ---------------------------------------------------------------
 
     /**
-     * Completar el flujo de primer ingreso: establecer una nueva contraseña y auto-login.
+     * Completa el flujo de primer ingreso: establecer una nueva contraseña y auto-login.
      *
-     * Requiere email + newPassword. Verifica la bandera primer_ingreso,
-     * actualiza la contraseña, desactiva la bandera y retorna tokens.
+     * @description Requiere email + newPassword. Verifica la bandera primer_ingreso,
+     *              actualiza la contraseña, desactiva la bandera y retorna tokens
+     *              de autenticación para auto-login inmediato.
+     *
+     * @param Request $request Solicitud con email y newPassword en el body
+     * @return void Nunca retorna — termina con Response
      */
     public function primerIngreso(Request $request): void
     {
@@ -359,8 +395,13 @@ class AuthController extends Controller
     // ---------------------------------------------------------------
 
     /**
-     * Obtener el nombre de la empresa para un tenant ID dado.
-     * Retorna null cuando tenantId es 0 (ej. SUPER_ADMIN sin tenant).
+     * Obtiene el nombre de la empresa para un tenant ID dado.
+     *
+     * @description Retorna null cuando tenantId es 0 (ej. SUPER_ADMIN sin tenant).
+     *              Consulta el modelo Tenant para obtener el nombre.
+     *
+     * @param int $tenantId ID del tenant
+     * @return ?string Nombre de la empresa o null si el tenantId es 0
      */
     private function getEmpresaNombre(int $tenantId): ?string
     {

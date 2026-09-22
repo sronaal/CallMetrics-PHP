@@ -6,10 +6,28 @@ namespace CallMetrics\Http\Controllers;
 use CallMetrics\Core\{Request, Response, TenantContext};
 use CallMetrics\Models\User;
 
+/**
+ * Clase UserController
+ *
+ * Controlador CRUD para gestión de usuarios. Soporta paginación, búsqueda,
+ * creación, actualización, eliminación y activación/desactivación de usuarios.
+ * Implementa restricciones de jerarquía de roles y protege usuarios SUPER_ADMIN.
+ *
+ * @description Todos los endpoints requieren autenticación. La eliminación y
+ *              activación/desactivación protege contra auto-modificación y
+ *              modificación de usuarios SUPER_ADMIN por usuarios con menor jerarquía.
+ * @package CallMetrics\Http\Controllers
+ */
 class UserController extends Controller
 {
     /**
-     * GET /api/usuarios?page=0&size=10&search=
+     * Lista paginada de usuarios con búsqueda por nombre o email.
+     *
+     * @description Retorna una página de usuarios con datos sensibles eliminados
+     *              (password_hash, updated_at). Soporta parámetros page, size y search.
+     *
+     * @param Request $request Solicitud con parámetros de query: page, size, search
+     * @return void Nunca retorna — termina con Response
      */
     public function index(Request $request): void
     {
@@ -29,7 +47,13 @@ class UserController extends Controller
     }
 
     /**
-     * GET /api/usuarios/{id}
+     * Muestra el detalle de un usuario específico.
+     *
+     * @description Retorna los datos de un usuario por su ID, eliminando el campo
+     *              sensible password_hash.
+     *
+     * @param Request $request Solicitud con parámetro de ruta: id
+     * @return void Nunca retorna — termina con Response
      */
     public function show(Request $request): void
     {
@@ -45,7 +69,14 @@ class UserController extends Controller
     }
 
     /**
-     * POST /api/usuarios
+     * Crea un nuevo usuario con contraseña hasheada.
+     *
+     * @description Valida campos requeridos (nombre, email, password), verifica unicidad
+     *              de email por tenant, valida formato de email y rol. Implementa
+     *              restricción de jerarquía: ADMIN_TENANT no puede asignar SUPER_ADMIN.
+     *
+     * @param Request $request Solicitud con datos del usuario en el body
+     * @return void Nunca retorna — termina con Response
      */
     public function store(Request $request): void
     {
@@ -112,7 +143,14 @@ class UserController extends Controller
     }
 
     /**
-     * PUT /api/usuarios/{id}
+     * Actualiza un usuario existente.
+     *
+     * @description Valida unicidad de email si cambió, valida formato de email,
+     *              longitud de password y restricciones de jerarquía de roles.
+     *              Solo actualiza los campos proporcionados (no vacíos).
+     *
+     * @param Request $request Solicitud con parámetro de ruta: id y datos en el body
+     * @return void Nunca retorna — termina con Response
      */
     public function update(Request $request): void
     {
@@ -178,7 +216,51 @@ class UserController extends Controller
     }
 
     /**
-     * PATCH /api/usuarios/{id}/toggle
+     * Elimina un usuario.
+     *
+     * @description No permite auto-eliminación ni eliminación de usuarios SUPER_ADMIN
+     *              por usuarios con menor jerarquía. Las FK con ON DELETE CASCADE
+     *              se encargan de refresh_tokens; agentes usa ON DELETE SET NULL.
+     *
+     * @param Request $request Solicitud con parámetro de ruta: id
+     * @return void Nunca retorna — termina con Response
+     */
+    public function delete(Request $request): void
+    {
+        $id = (int) $request->param('id');
+        $user = User::find($id);
+
+        if (!$user) {
+            Response::notFound('Usuario no encontrado');
+        }
+
+        // No permitir auto-eliminación
+        if ((int) $user['id'] === TenantContext::getUserId()) {
+            Response::error('No puedes eliminar tu propia cuenta', 400);
+        }
+
+        // Proteger SUPER_ADMIN
+        if ($user['rol'] === 'SUPER_ADMIN' && !TenantContext::isSuperAdmin()) {
+            Response::forbidden('Solo SUPER_ADMIN puede eliminar un SUPER_ADMIN');
+        }
+
+        try {
+            User::delete($id);
+        } catch (\PDOException $e) {
+            Response::error('Error al eliminar: ' . $e->getMessage(), 500);
+        }
+
+        Response::ok(null, 'Usuario eliminado correctamente');
+    }
+
+    /**
+     * Activa o desactiva un usuario (toggle).
+     *
+     * @description No permite auto-desactivación ni modificación de usuarios SUPER_ADMIN
+     *              por usuarios con menor jerarquía. Alterna el estado activo (0 ↔ 1).
+     *
+     * @param Request $request Solicitud con parámetro de ruta: id
+     * @return void Nunca retorna — termina con Response
      */
     public function toggle(Request $request): void
     {

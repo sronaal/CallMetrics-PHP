@@ -7,13 +7,27 @@ use CallMetrics\Core\{Request, Response};
 use CallMetrics\Models\Tenant;
 
 /**
- * Controlador CRUD para empresas (tenants).
- * Todos los endpoints requieren el rol SUPER_ADMIN.
+ * Clase TenantController
+ *
+ * Controlador CRUD para empresas (tenants). Todos los endpoints requieren
+ * el rol SUPER_ADMIN. Gestiona la creación, actualización, eliminación
+ * y activación/desactivación de empresas en el sistema multi-tenant.
+ *
+ * @description Implementa operaciones CRUD completas con validación de unicidad
+ *              de NIT, conteo de usuarios asociados y protección contra eliminación
+ *              de empresas con usuarios activos.
+ * @package CallMetrics\Http\Controllers
  */
 class TenantController extends Controller
 {
     /**
-     * GET /api/tenants?page=0&size=10&search=
+     * Lista paginada de empresas con búsqueda por nombre o NIT.
+     *
+     * @description Retorna una página de tenants enriquecidos con el conteo de
+     *              usuarios asociados. Soporta parámetros page, size y search.
+     *
+     * @param Request $request Solicitud con parámetros de query: page, size, search
+     * @return void Nunca retorna — termina con Response
      */
     public function index(Request $request): void
     {
@@ -33,7 +47,13 @@ class TenantController extends Controller
     }
 
     /**
-     * GET /api/tenants/{id}
+     * Muestra el detalle de una empresa específica.
+     *
+     * @description Retorna los datos de un tenant por su ID, enriquecido con
+     *              el conteo de usuarios asociados.
+     *
+     * @param Request $request Solicitud con parámetro de ruta: id
+     * @return void Nunca retorna — termina con Response
      */
     public function show(Request $request): void
     {
@@ -51,7 +71,13 @@ class TenantController extends Controller
     }
 
     /**
-     * POST /api/tenants
+     * Crea una nueva empresa.
+     *
+     * @description Valida campos requeridos (nombre, nit, email), verifica unicidad
+     *              de NIT y formato de email. Establece plan por defecto 'FREE'.
+     *
+     * @param Request $request Solicitud con datos de la empresa en el body
+     * @return void Nunca retorna — termina con Response
      */
     public function store(Request $request): void
     {
@@ -90,7 +116,13 @@ class TenantController extends Controller
     }
 
     /**
-     * PUT /api/tenants/{id}
+     * Actualiza una empresa existente.
+     *
+     * @description Valida unicidad de NIT si cambió y formato de email.
+     *              Solo actualiza los campos proporcionados (no vacíos).
+     *
+     * @param Request $request Solicitud con parámetro de ruta: id y datos en el body
+     * @return void Nunca retorna — termina con Response
      */
     public function update(Request $request): void
     {
@@ -135,7 +167,50 @@ class TenantController extends Controller
     }
 
     /**
-     * PATCH /api/tenants/{id}/toggle
+     * Elimina una empresa y todos sus datos asociados.
+     *
+     * @description No permite eliminar si tiene usuarios asociados. Las FKs con
+     *              ON DELETE CASCADE se encargan de pbx, extensiones, colas,
+     *              agentes, llamadas_cdr, eventos, reglas_alerta, etc.
+     *              usuarios.tenant_id usa ON DELETE SET NULL (no borra usuarios).
+     *
+     * @param Request $request Solicitud con parámetro de ruta: id
+     * @return void Nunca retorna — termina con Response
+     */
+    public function delete(Request $request): void
+    {
+        $id = (int) $request->param('id');
+        $tenant = Tenant::find($id);
+
+        if (!$tenant) {
+            Response::notFound('Empresa no encontrada');
+        }
+
+        // No permitir eliminar si tiene usuarios asociados
+        $userCount = Tenant::countUsers($id);
+        if ($userCount > 0) {
+            Response::error(
+                "No se puede eliminar: la empresa tiene {$userCount} usuario(s) asociado(s). Desactívela primero.",
+                409
+            );
+        }
+
+        try {
+            Tenant::delete($id);
+        } catch (\PDOException $e) {
+            Response::error('Error al eliminar: ' . $e->getMessage(), 500);
+        }
+
+        Response::ok(null, 'Empresa eliminada correctamente');
+    }
+
+    /**
+     * Activa o desactiva una empresa (toggle).
+     *
+     * @description Alterna el estado activo de la empresa (0 ↔ 1).
+     *
+     * @param Request $request Solicitud con parámetro de ruta: id
+     * @return void Nunca retorna — termina con Response
      */
     public function toggle(Request $request): void
     {

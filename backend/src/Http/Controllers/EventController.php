@@ -7,15 +7,26 @@ use CallMetrics\Core\{Request, Response};
 use CallMetrics\Models\Event;
 
 /**
- * Controlador de eventos del sistema (AMI, CEL, monitoreo).
- * Los endpoints requieren el rol SUPERVISOR.
+ * Clase EventController
+ *
+ * Controlador de eventos del sistema (AMI, CEL, monitoreo). Los endpoints
+ * requieren el rol SUPERVISOR. Proporciona listado paginado con filtros
+ * por tipo, nombre de evento, servidor PBX y rango de fechas.
+ *
+ * @description Parsea el contenido JSON de los eventos para facilitar su
+ *              lectura en la respuesta.
+ * @package CallMetrics\Http\Controllers
  */
 class EventController extends Controller
 {
     /**
-     * GET /api/eventos?page=0&size=10&tipo=&evento=&pbx_id=&fecha_inicio=&fecha_fin=
-     *
      * Lista paginada de eventos con filtros por tipo, nombre, PBX y rango de fechas.
+     *
+     * @description Retorna una página de eventos del sistema con filtros opcionales.
+     *              El campo contenido se parsea de JSON a array para facilitar la lectura.
+     *
+     * @param Request $request Solicitud con parámetros de query: page, size, tipo, evento, pbx_id, fecha_inicio, fecha_fin
+     * @return void Nunca retorna — termina con Response
      */
     public function index(Request $request): void
     {
@@ -41,9 +52,13 @@ class EventController extends Controller
     }
 
     /**
-     * GET /api/eventos/{id}
+     * Muestra el detalle de un evento específico.
      *
-     * Detalle de un evento específico.
+     * @description Retorna los datos de un evento por su ID, con el campo
+     *              contenido parseado de JSON a array.
+     *
+     * @param Request $request Solicitud con parámetro de ruta: id
+     * @return void Nunca retorna — termina con Response
      */
     public function show(Request $request): void
     {

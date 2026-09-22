@@ -7,15 +7,26 @@ use CallMetrics\Core\{Request, Response, TenantContext};
 use CallMetrics\Models\{Extension, Pbx};
 
 /**
- * Controlador CRUD para extensiones SIP.
- * Todos los endpoints requieren el rol ADMIN_TENANT.
+ * Clase ExtensionController
+ *
+ * Controlador CRUD para extensiones SIP. Todos los endpoints requieren
+ * el rol ADMIN_TENANT. Gestiona la creación, actualización y activación/
+ * desactivación de extensiones telefónicas internas.
+ *
+ * @description Soporta filtrado por servidor PBX y búsqueda por número o nombre.
+ *              Valida la existencia del PBX asociado antes de crear una extensión.
+ * @package CallMetrics\Http\Controllers
  */
 class ExtensionController extends Controller
 {
     /**
-     * GET /api/extensiones?page=0&size=10&search=&pbx_id=
-     *
      * Lista paginada de extensiones, filtrable por servidor PBX.
+     *
+     * @description Retorna una página de extensiones con búsqueda por número o nombre
+     *              y filtrado opcional por pbx_id.
+     *
+     * @param Request $request Solicitud con parámetros de query: page, size, search, pbx_id
+     * @return void Nunca retorna — termina con Response
      */
     public function index(Request $request): void
     {
@@ -38,9 +49,12 @@ class ExtensionController extends Controller
     }
 
     /**
-     * GET /api/extensiones/{id}
+     * Muestra el detalle de una extensión específica.
      *
-     * Detalle de una extensión específica.
+     * @description Retorna los datos de una extensión por su ID.
+     *
+     * @param Request $request Solicitud con parámetro de ruta: id
+     * @return void Nunca retorna — termina con Response
      */
     public function show(Request $request): void
     {
@@ -56,9 +70,13 @@ class ExtensionController extends Controller
     }
 
     /**
-     * POST /api/extensiones
+     * Crea una nueva extensión SIP.
      *
-     * Crear una nueva extensión SIP. Requiere: numero, pbx_id.
+     * @description Valida campos requeridos (numero, pbx_id), verifica que el PBX
+     *              exista y cree la extensión con estado por defecto OFFLINE.
+     *
+     * @param Request $request Solicitud con datos de la extensión en el body
+     * @return void Nunca retorna — termina con Response
      */
     public function store(Request $request): void
     {
@@ -101,9 +119,12 @@ class ExtensionController extends Controller
     }
 
     /**
-     * PUT /api/extensiones/{id}
+     * Actualiza una extensión existente.
      *
-     * Actualizar una extensión existente.
+     * @description Solo actualiza los campos proporcionados (no vacíos ni null).
+     *
+     * @param Request $request Solicitud con parámetro de ruta: id y datos en el body
+     * @return void Nunca retorna — termina con Response
      */
     public function update(Request $request): void
     {
@@ -131,9 +152,12 @@ class ExtensionController extends Controller
     }
 
     /**
-     * PATCH /api/extensiones/{id}/toggle
+     * Activa o desactiva una extensión (toggle).
      *
-     * Activar/desactivar una extensión.
+     * @description Alterna el estado activo de la extensión (0 ↔ 1).
+     *
+     * @param Request $request Solicitud con parámetro de ruta: id
+     * @return void Nunca retorna — termina con Response
      */
     public function toggle(Request $request): void
     {

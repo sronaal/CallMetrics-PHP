@@ -6,14 +6,28 @@ namespace CallMetrics\Http\Controllers;
 use CallMetrics\Core\{Request, Response, Database, TenantContext};
 
 /**
- * Controlador del dashboard — resumen de KPIs y metricas en tiempo real.
+ * Clase DashboardController
+ *
+ * Controlador del dashboard — resumen de KPIs y métricas en tiempo real.
+ * Proporciona datos consolidados para el panel principal de la aplicación,
+ * incluyendo contadores de usuarios, llamadas, agentes, alertas y estado PBX.
+ *
+ * @description Soporta vistas tanto para usuarios normales (filtrado por tenant)
+ *              como para SUPER_ADMIN (vista global sin restricciones de tenant).
+ * @package CallMetrics\Http\Controllers
  */
 class DashboardController extends Controller
 {
     /**
-     * GET /api/dashboard/summary
+     * Obtiene KPIs consolidados del dashboard.
      *
-     * Retorna KPIs consolidados: usuarios, llamadas, agentes, alertas y estado PBX.
+     * @description Retorna métricas consolidadas: total de empresas (solo SUPER_ADMIN),
+     *              total de usuarios, usuarios activos, llamadas del día, llamadas activas,
+     *              agentes disponibles, alertas sin notificar y PBX en estado ONLINE.
+     *              Para usuarios normales filtra por tenant; para SUPER_ADMIN muestra totales globales.
+     *
+     * @param Request $request Solicitud actual (no utiliza parámetros específicos)
+     * @return void Nunca retorna — termina con Response
      */
     public function summary(Request $request): void
     {
@@ -73,6 +87,26 @@ class DashboardController extends Controller
             $llamadasParams
         )['t'];
 
+        // Tasa ASR (Answer Seizure Ratio): contestadas / total * 100
+        $llamadasStats = $db->fetchOne(
+            "SELECT COUNT(*) as total,
+                    SUM(CASE WHEN estado = 'ANSWERED' THEN 1 ELSE 0 END) as contestadas,
+                    AVG(CASE WHEN estado = 'ANSWERED' THEN duracion ELSE NULL END) as duracion_promedio
+             FROM llamadas_cdr $llamadasFilter DATE(inicio_llamada) = CURDATE()",
+            $llamadasParams
+        );
+        $totalLlamadas = (int) ($llamadasStats['total'] ?? 0);
+        $contestadas = (int) ($llamadasStats['contestadas'] ?? 0);
+        $tasaASR = $totalLlamadas > 0 ? round(($contestadas / $totalLlamadas) * 100, 1) : 0;
+        $duracionPromedio = (int) round((float) ($llamadasStats['duracion_promedio'] ?? 0));
+        $acdPromedio = intdiv($duracionPromedio, 60) . ':' . str_pad((string) ($duracionPromedio % 60), 2, '0', STR_PAD_LEFT);
+
+        // Total de agentes
+        $agentesTotal = (int) $db->fetchOne(
+            "SELECT COUNT(*) as t FROM agentes $tenantFilter",
+            $params
+        )['t'];
+
         Response::ok([
             'totalEmpresas'    => $empresas,
             'totalUsuarios'    => $usuarios,
@@ -80,8 +114,11 @@ class DashboardController extends Controller
             'llamadasHoy'      => $llamadasHoy,
             'llamadasActivas'  => $llamadasActivas,
             'agentesActivos'   => $agentesActivos,
+            'agentesTotal'     => $agentesTotal,
             'alertasActivas'   => $alertasActivas,
             'pbxOnline'        => $pbxOnline,
+            'tasaASR'          => $tasaASR,
+            'acdPromedio'      => $acdPromedio,
         ]);
     }
 }

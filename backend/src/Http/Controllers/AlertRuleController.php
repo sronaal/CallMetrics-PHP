@@ -7,15 +7,26 @@ use CallMetrics\Core\{Database, Request, Response, TenantContext};
 use CallMetrics\Models\AlertRule;
 
 /**
- * Controlador CRUD para reglas de alerta y su historial.
- * Todos los endpoints requieren el rol ADMIN_TENANT.
+ * Clase AlertRuleController
+ *
+ * Controlador CRUD para reglas de alerta y su historial. Todos los endpoints
+ * requieren el rol ADMIN_TENANT. Gestiona la configuración de umbrales y
+ * condiciones para notificaciones automáticas.
+ *
+ * @description Soporta operaciones CRUD completas con validación de tipos
+ *              de alerta y condiciones permitidas. Incluye endpoint para
+ *              consultar el historial de alertas disparadas.
+ * @package CallMetrics\Http\Controllers
  */
 class AlertRuleController extends Controller
 {
     /**
-     * GET /api/alertas?page=0&size=10&search=
+     * Lista paginada de reglas de alerta con búsqueda por nombre.
      *
-     * Lista paginada de reglas de alerta.
+     * @description Retorna una página de reglas de alerta del tenant actual.
+     *
+     * @param Request $request Solicitud con parámetros de query: page, size, search
+     * @return void Nunca retorna — termina con Response
      */
     public function index(Request $request): void
     {
@@ -33,9 +44,12 @@ class AlertRuleController extends Controller
     }
 
     /**
-     * GET /api/alertas/{id}
+     * Muestra el detalle de una regla de alerta específica.
      *
-     * Detalle de una regla de alerta.
+     * @description Retorna los datos de una regla de alerta por su ID.
+     *
+     * @param Request $request Solicitud con parámetro de ruta: id
+     * @return void Nunca retorna — termina con Response
      */
     public function show(Request $request): void
     {
@@ -51,9 +65,14 @@ class AlertRuleController extends Controller
     }
 
     /**
-     * POST /api/alertas
+     * Crea una nueva regla de alerta.
      *
-     * Crear una nueva regla de alerta. Requiere: nombre, tipo, umbral.
+     * @description Valida campos requeridos (nombre, tipo, umbral), tipo de alerta
+     *              (LLAMADAS_PERDIDAS, CPU, RAM, COLA_SATURADA, TRONCAL_CAIDA)
+     *              y condición (MAYOR, MENOR, IGUAL).
+     *
+     * @param Request $request Solicitud con datos de la regla en el body
+     * @return void Nunca retorna — termina con Response
      */
     public function store(Request $request): void
     {
@@ -101,9 +120,12 @@ class AlertRuleController extends Controller
     }
 
     /**
-     * PUT /api/alertas/{id}
+     * Actualiza una regla de alerta existente.
      *
-     * Actualizar una regla de alerta existente.
+     * @description Solo actualiza los campos proporcionados (no vacíos ni null).
+     *
+     * @param Request $request Solicitud con parámetro de ruta: id y datos en el body
+     * @return void Nunca retorna — termina con Response
      */
     public function update(Request $request): void
     {
@@ -134,9 +156,12 @@ class AlertRuleController extends Controller
     }
 
     /**
-     * PATCH /api/alertas/{id}/toggle
+     * Activa o desactiva una regla de alerta (toggle).
      *
-     * Activar/desactivar una regla de alerta.
+     * @description Alterna el estado activo de la regla (0 ↔ 1).
+     *
+     * @param Request $request Solicitud con parámetro de ruta: id
+     * @return void Nunca retorna — termina con Response
      */
     public function toggle(Request $request): void
     {
@@ -156,9 +181,13 @@ class AlertRuleController extends Controller
     }
 
     /**
-     * GET /api/alertas/{id}/historial
+     * Obtiene el historial de alertas disparadas para una regla específica.
      *
-     * Obtener el historial de alertas disparadas para una regla específica.
+     * @description Retorna una lista paginada de alertas disparadas de la regla,
+     *              filtrada por tenant y ordenada por fecha de creación descendente.
+     *
+     * @param Request $request Solicitud con parámetro de ruta: id y query: page, size
+     * @return void Nunca retorna — termina con Response
      */
     public function history(Request $request): void
     {

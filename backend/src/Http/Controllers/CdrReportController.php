@@ -6,23 +6,38 @@ namespace CallMetrics\Http\Controllers;
 use CallMetrics\Core\{Request, Response, Database, TenantContext};
 
 /**
+ * Clase CdrReportController
+ *
  * Controlador de lectura para el CDR Report (datos del agente-collector).
  * Lee de las tablas cdr_llamadas, cdr_colas_resumen, cdr_agentes_resumen,
  * cdr_estadisticas_colas y cdr_llamadas_real.
  *
- * Todos los endpoints requieren SUPERVISOR o superior.
+ * @description Todos los endpoints requieren SUPERVISOR o superior. Proporciona
+ *              vistas detalladas de llamadas, colas, agentes, estadísticas por
+ *              cola y llamadas reales con tiempos exactos. Incluye endpoint de
+ *              KPI cards con métricas consolidadas.
+ * @package CallMetrics\Http\Controllers
  */
 class CdrReportController extends Controller
 {
+    /**
+     * Estados de llamada permitidos para validación.
+     *
+     * @description Lista de estados válidos según el estándar Asterisk/ITU-T Q.825.
+     */
     private const PERMITTED_STATES = [
         'ANSWERED', 'NOANSWER', 'BUSY', 'FAILED', 'CANCELLED',
         'CONGESTION', 'CHANUNAVAIL', 'ANSWER', 'NO ANSWER',
     ];
 
     /**
-     * GET /api/cdr-report/llamadas?page=0&size=50&fecha_inicio=&fecha_fin=&nombre_cola=&extension_agente=&estado_final=
+     * Lista paginada de llamadas individuales del reporte del agente.
      *
-     * Llamadas individuales del reporte del agente.
+     * @description Consulta la tabla cdr_llamadas con filtros opcionales por tenant,
+     *              fecha, cola, extensión de agente y estado final.
+     *
+     * @param Request $request Solicitud con parámetros de query: page, size, fecha_inicio, fecha_fin, nombre_cola, extension_agente, estado_final
+     * @return void Nunca retorna — termina con Response
      */
     public function llamadas(Request $request): void
     {
@@ -96,9 +111,14 @@ class CdrReportController extends Controller
     }
 
     /**
-     * GET /api/cdr-report/colas
+     * Obtiene el resumen de colas (una fila por cola).
      *
-     * Resumen de colas (una fila por cola).
+     * @description Retorna estadísticas consolidadas por cola: total de llamadas,
+     *              contestadas, no contestadas, ocupadas, fallidas, porcentaje
+     *              de efectividad y promedios de espera y duración.
+     *
+     * @param Request $request Solicitud con parámetros de query: tenant_id
+     * @return void Nunca retorna — termina con Response
      */
     public function colas(Request $request): void
     {
@@ -143,9 +163,14 @@ class CdrReportController extends Controller
     }
 
     /**
-     * GET /api/cdr-report/agentes
+     * Obtiene el resumen de agentes (una fila por agente).
      *
-     * Resumen de agentes (una fila por agente).
+     * @description Retorna estadísticas consolidadas por agente: llamadas atendidas,
+     *              no contestadas, ocupadas, fallidas, porcentaje de efectividad
+     *              y promedios de espera y duración.
+     *
+     * @param Request $request Solicitud con parámetros de query: tenant_id
+     * @return void Nunca retorna — termina con Response
      */
     public function agentes(Request $request): void
     {
@@ -191,9 +216,13 @@ class CdrReportController extends Controller
     }
 
     /**
-     * GET /api/cdr-report/estadisticas?page=0&size=50&numero_cola=&fecha_inicio=&fecha_fin=
+     * Lista paginada de estadísticas por llamada y cola (una fila por llamada-cola).
      *
-     * Estadisticas por llamada y cola (una fila por llamada-cola).
+     * @description Consulta cdr_estadisticas_colas con filtros opcionales por tenant,
+     *              número de cola y rango de fechas.
+     *
+     * @param Request $request Solicitud con parámetros de query: page, size, numero_cola, fecha_inicio, fecha_fin
+     * @return void Nunca retorna — termina con Response
      */
     public function estadisticas(Request $request): void
     {
@@ -260,9 +289,14 @@ class CdrReportController extends Controller
     }
 
     /**
-     * GET /api/cdr-report/real?page=0&size=50&fecha_inicio=&fecha_fin=
+     * Lista paginada de llamadas reales con tiempos exactos.
      *
-     * Llamadas reales con tiempos exactos.
+     * @description Consulta cdr_llamadas_real con filtros opcionales por tenant
+     *              y rango de fechas. Retorna tiempos totales de conversación
+     *              y segmentos por llamada.
+     *
+     * @param Request $request Solicitud con parámetros de query: page, size, fecha_inicio, fecha_fin
+     * @return void Nunca retorna — termina con Response
      */
     public function real(Request $request): void
     {
@@ -325,9 +359,14 @@ class CdrReportController extends Controller
     }
 
     /**
-     * GET /api/cdr-report/stats
+     * Obtiene KPI cards: total llamadas, total contestadas, total colas, efectividad.
      *
-     * KPI cards: total llamadas, total contestadas, total colas, efectividad.
+     * @description Calcula métricas consolidadas del CDR Report: total de llamadas,
+     *              contestadas, no contestadas, ocupadas, fallidas, total de colas,
+     *              total de agentes y porcentaje de efectividad.
+     *
+     * @param Request $request Solicitud con parámetros de query: tenant_id
+     * @return void Nunca retorna — termina con Response
      */
     public function stats(Request $request): void
     {

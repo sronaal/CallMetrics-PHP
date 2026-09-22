@@ -7,15 +7,28 @@ use CallMetrics\Core\{Request, Response, TenantContext};
 use CallMetrics\Models\Pbx;
 
 /**
- * Controlador CRUD para servidores PBX.
- * Todos los endpoints requieren el rol ADMIN_TENANT.
+ * Clase PbxController
+ *
+ * Controlador CRUD para servidores PBX. Todos los endpoints requieren el rol
+ * ADMIN_TENANT. Gestiona la configuración de servidores Asterisk/FreePBX,
+ * incluyendo generación automática de tokens de agente y UUIDs.
+ *
+ * @description Soporta operaciones CRUD completas con enriquecimiento de datos
+ *              (conteo de extensiones, llamadas del día) y eliminación segura
+ *              mediante ON DELETE CASCADE en foreign keys.
+ * @package CallMetrics\Http\Controllers
  */
 class PbxController extends Controller
 {
     /**
-     * GET /api/pbx?page=0&size=10&search=
-     *
      * Lista paginada de servidores PBX con búsqueda por nombre o IP.
+     *
+     * @description Retorna una página de servidores PBX enriquecidos con conteos
+     *              de extensiones y llamadas del día. Elimina el token_agente de
+     *              la respuesta por seguridad.
+     *
+     * @param Request $request Solicitud con parámetros de query: page, size, search
+     * @return void Nunca retorna — termina con Response
      */
     public function index(Request $request): void
     {
@@ -37,9 +50,13 @@ class PbxController extends Controller
     }
 
     /**
-     * GET /api/pbx/{id}
+     * Muestra el detalle de un servidor PBX específico.
      *
-     * Detalle de un servidor PBX con conteos de extensiones y llamadas del día.
+     * @description Retorna los datos de un servidor PBX por su ID, enriquecido
+     *              con conteos de extensiones y llamadas del día.
+     *
+     * @param Request $request Solicitud con parámetro de ruta: id
+     * @return void Nunca retorna — termina con Response
      */
     public function show(Request $request): void
     {
@@ -59,10 +76,14 @@ class PbxController extends Controller
     }
 
     /**
-     * POST /api/pbx
+     * Crea un nuevo servidor PBX con token de agente y UUID generados automáticamente.
      *
-     * Crear un nuevo servidor PBX. Requiere: nombre, ip_address.
-     * Token de agente y agente_id se generan automáticamente.
+     * @description Valida campos requeridos (nombre, ip_address), genera UUIDs
+     *              automáticamente para agente y token, hashea el token para
+     *              almacenamiento seguro y retorna los valores generados al usuario.
+     *
+     * @param Request $request Solicitud con datos del servidor PBX en el body
+     * @return void Nunca retorna — termina con Response
      */
     public function store(Request $request): void
     {
@@ -110,7 +131,12 @@ class PbxController extends Controller
     }
 
     /**
-     * Generar UUID v4 aleatorio.
+     * Genera un UUID v4 aleatorio.
+     *
+     * @description Genera un UUID v4 válido utilizando random_bytes() o
+     *              openssl_random_pseudo_bytes() como fallback.
+     *
+     * @return string UUID v4 en formato estándar (xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx)
      */
     private static function generateUuid(): string
     {
@@ -127,9 +153,14 @@ class PbxController extends Controller
     }
 
     /**
-     * DELETE /api/pbx/{id}
+     * Elimina un servidor PBX y sus datos asociados.
      *
-     * Eliminar un servidor PBX y sus datos asociados.
+     * @description Las foreign keys con ON DELETE CASCADE eliminan automáticamente
+     *              eventos, llamadas_cdr, extensiones y colas asociadas. Agentes
+     *              usa ON DELETE SET NULL en cola_id y extension_id.
+     *
+     * @param Request $request Solicitud con parámetro de ruta: id
+     * @return void Nunca retorna — termina con Response
      */
     public function destroy(Request $request): void
     {
@@ -153,9 +184,13 @@ class PbxController extends Controller
     }
 
     /**
-     * PUT /api/pbx/{id}
+     * Actualiza un servidor PBX existente.
      *
-     * Actualizar un servidor PBX existente.
+     * @description Solo actualiza los campos proporcionados (no vacíos ni null).
+     *              Si se proporciona un nuevo token_agente, lo hashea antes de almacenar.
+     *
+     * @param Request $request Solicitud con parámetro de ruta: id y datos en el body
+     * @return void Nunca retorna — termina con Response
      */
     public function update(Request $request): void
     {
@@ -186,9 +221,12 @@ class PbxController extends Controller
     }
 
     /**
-     * PATCH /api/pbx/{id}/toggle
+     * Activa o desactiva un servidor PBX (toggle).
      *
-     * Activar/desactivar un servidor PBX.
+     * @description Alterna el estado activo del servidor PBX (0 ↔ 1).
+     *
+     * @param Request $request Solicitud con parámetro de ruta: id
+     * @return void Nunca retorna — termina con Response
      */
     public function toggle(Request $request): void
     {

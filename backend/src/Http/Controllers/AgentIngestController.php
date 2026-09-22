@@ -8,42 +8,32 @@ use CallMetrics\Models\{Pbx, CallRecord, Event, AlertRule};
 use CallMetrics\WebSocket\EventBridge;
 
 /**
- * Controlador de ingesta de datos desde el agente collector.
+ * Clase AgentIngestController
  *
- * Endpoints:
- *   POST /api/agent/heartbeat   — Heartbeat del agente con estado del PBX
- *   POST /api/agent/cdr         — Envio masivo de registros CDR
- *   POST /api/agent/events      — Envio masivo de eventos AMI/CEL
- *   POST /api/agent/metrics     — Metricas de salud del servidor
+ * Controlador de ingesta de datos desde el agente collector. Recibe heartbeats,
+ * registros CDR, eventos AMI/CEL y métricas de salud del servidor PBX.
+ * Autentica agentes mediante UUID único (X-Agent-ID header).
  *
- * Rutas compatibles (prefijo v1):
- *   POST /api/v1/agent/heartbeat
- *   POST /api/v1/agent/cdr
- *   POST /api/v1/agent/events
- *   POST /api/v1/agent/metrics
- *
- * Autenticacion: UUID unico del agente (X-Agent-ID header)
- * Compatible con agente Python y agente Spring/Java.
+ * @description Compatible con agente Python y agente Spring/Java. Procesa lotes
+ *              de datos, valida integridad, almacena en BD y dispara alertas
+ *              cuando se superan umbrales configurados. Broadcastea eventos
+ *              en tiempo real a través de EventBridge.
+ * @package CallMetrics\Http\Controllers
  */
 class AgentIngestController extends Controller
 {
     /**
      * POST /api/agent/heartbeat
      *
-     * El agente envia un heartbeat cada 30 segundos con el estado actual.
-     * Actualiza el estado del PBX y el timestamp de ultimo heartbeat.
+     * Recibe un heartbeat del agente con el estado actual del PBX.
      *
-     * Headers requeridos:
-     *   X-Agent-ID: UUID del agente collector
+     * @description El agente envía un heartbeat cada 30 segundos. Actualiza el
+     *              estado del PBX, registra evento de salud y broadcastea el
+     *              estado a suscriptores del canal pbx_{id}. Normaliza estados
+     *              del agente (español/inglés) al formato de la BD.
      *
-     * Body:
-     *   {
-     *     "pbx_id": 1,
-     *     "estado": "ONLINE",
-     *     "uptime": 123456,
-     *     "load_avg": [1.2, 0.8, 0.5],
-     *     "active_channels": 5
-     *   }
+     * @param Request $request Solicitud con X-Agent-ID header y datos del PBX en el body
+     * @return void Nunca retorna — termina con Response
      */
     public function heartbeat(Request $request): void
     {
@@ -106,26 +96,14 @@ class AgentIngestController extends Controller
      * POST /api/agent/cdr
      *
      * Recibe un lote de registros CDR desde el agente.
-     * Procesa e inserta en la tabla llamadas_cdr.
      *
-     * Body:
-     *   {
-     *     "cdr": [
-     *       {
-     *         "callid": "abc123",
-     *         "extension_origen": "1001",
-     *         "extension_destino": "1002",
-     *         "numero_origen": "5551234",
-     *         "numero_destino": "5555678",
-     *         "duracion": 120,
-     *         "billable_seconds": 120,
-     *         "estado": "ANSWERED",
-     *         "inicio_llamada": "2024-01-15 10:30:00",
-     *         "fin_llamada": "2024-01-15 10:32:00",
-     *         "grabacion_url": "/var/spool/asterisk/monitor/abc123.wav"
-     *       }
-     *     ]
-     *   }
+     * @description Procesa e inserta registros CDR en la tabla llamadas_cdr.
+     *              Valida campos requeridos, integridad de datos, sanitiza URLs
+     *              de grabación y verifica alertas de llamadas perdidas.
+     *              Broadcastea cada CDR procesado como evento call_ended.
+     *
+     * @param Request $request Solicitud con X-Agent-ID header y array cdr en el body
+     * @return void Nunca retorna — termina con Response
      */
     public function cdr(Request $request): void
     {
@@ -235,28 +213,14 @@ class AgentIngestController extends Controller
     /**
      * POST /api/agent/cdr-report
      *
-     * Recibe el reporte completo CDR del agente-collector con 5 datasets anidados:
-     *   datos.llamadasNormalizadas, datos.colasResumen, datos.agentesResumen,
-     *   datos.estadisticasColas, datos.llamadasReal
+     * Recibe el reporte completo CDR del agente-collector con 5 datasets anidados.
      *
-     * Inserta/actualiza en las tablas cdr_* correspondientes.
+     * @description Procesa llamadasNormalizadas, colasResumen, agentesResumen,
+     *              estadisticasColas y llamadasReal. Utiliza INSERT ... ON DUPLICATE KEY
+     *              UPDATE para upsert (insertar o actualizar). Broadcastea evento cdr_report.
      *
-     * Headers requeridos:
-     *   X-Agent-ID: UUID del agente collector
-     *
-     * Body:
-     *   {
-     *     "agenteId": "uuid",
-     *     "timestamp": "...",
-     *     "empresaId": 1,
-     *     "datos": {
-     *       "llamadasNormalizadas": [...],
-     *       "colasResumen": [...],
-     *       "agentesResumen": [...],
-     *       "estadisticasColas": [...],
-     *       "llamadasReal": [...]
-     *     }
-     *   }
+     * @param Request $request Solicitud con X-Agent-ID header y datos anidados en el body
+     * @return void Nunca retorna — termina con Response
      */
     public function cdrReport(Request $request): void
     {
@@ -489,17 +453,12 @@ class AgentIngestController extends Controller
      *
      * Recibe un lote de eventos AMI/CEL desde el agente.
      *
-     * Body:
-     *   {
-     *     "events": [
-     *       {
-     *         "tipo": "AMI",
-     *         "evento": "Newchannel",
-     *         "callid": "abc123",
-     *         "contenido": { ... }
-     *       }
-     *     ]
-     *   }
+     * @description Almacena eventos en la tabla eventos y broadcastea eventos
+     *              de ciclo de vida de llamada (Newchannel, Dial, Answer, Hangup)
+     *              a través de EventBridge.
+     *
+     * @param Request $request Solicitud con X-Agent-ID header y array events en el body
+     * @return void Nunca retorna — termina con Response
      */
     public function events(Request $request): void
     {
@@ -569,17 +528,13 @@ class AgentIngestController extends Controller
     /**
      * POST /api/agent/metrics
      *
-     * Recibe metricas de salud del servidor PBX.
+     * Recibe métricas de salud del servidor PBX.
      *
-     * Body:
-     *   {
-     *     "cpu_usage": 45.2,
-     *     "memory_usage": 62.8,
-     *     "disk_usage": 78.5,
-     *     "active_channels": 5,
-     *     "sip_peers_online": 12,
-     *     "uptime": 123456
-     *   }
+     * @description Registra métricas como evento de sistema, verifica alertas
+     *              de CPU/RAM y broadcastea métricas de salud a suscriptores.
+     *
+     * @param Request $request Solicitud con X-Agent-ID header y métricas en el body
+     * @return void Nunca retorna — termina con Response
      */
     public function metrics(Request $request): void
     {
@@ -620,11 +575,14 @@ class AgentIngestController extends Controller
     }
 
     /**
-     * Autenticar agente usando UUID único (X-Agent-ID header).
+     * Autentica agente usando UUID único (X-Agent-ID header).
      *
-     * Compatible con agente Python y agente Spring/Java.
-     * El agente envía su UUID en el header X-Agent-ID.
-     * Se busca el PBX por agente_id (columna unique en tabla pbx).
+     * @description Valida el header X-Agent-ID, busca el PBX por agente_id
+     *              (columna unique en tabla pbx) y verifica que esté activo.
+     *              Compatible con agente Python y agente Spring/Java.
+     *
+     * @param Request $request Solicitud con header X-Agent-ID
+     * @return ?array Datos del PBX autenticado o null si falla la autenticación
      */
     private function authenticateAgent(Request $request): ?array
     {
@@ -649,8 +607,15 @@ class AgentIngestController extends Controller
     }
 
     /**
-     * Validar integridad de un registro CDR.
-     * Retorna true si es válido, o string con mensaje de error.
+     * Valida la integridad de un registro CDR.
+     *
+     * @description Verifica que duracion y billable_seconds sean numéricos no negativos,
+     *              que fin_llamada no sea anterior a inicio_llamada, que el estado sea
+     *              válido según Asterisk y que el callid no contenga caracteres peligrosos.
+     *
+     * @param array $cdr Registro CDR a validar
+     * @param int $index Índice del registro en el lote (para mensajes de error)
+     * @return bool|string true si es válido, o string con mensaje de error
      */
     private function validarCdr(array $cdr, int $index): bool|string
     {
@@ -695,7 +660,14 @@ class AgentIngestController extends Controller
     }
 
     /**
-     * Verificar alertas de llamadas perdidas.
+     * Verifica alertas de llamadas perdidas.
+     *
+     * @description Consulta reglas activas de tipo LLAMADAS_PERDIDAS y evalúa
+     *              si el total de llamadas perdidas en la última hora supera el umbral.
+     *
+     * @param int $tenantId ID del tenant
+     * @param int $pbxId ID del servidor PBX
+     * @return void
      */
     private function checkCallAlerts(int $tenantId, int $pbxId): void
     {
@@ -728,7 +700,14 @@ class AgentIngestController extends Controller
     }
 
     /**
-     * Verificar alertas de CPU/RAM.
+     * Verifica alertas de CPU/RAM.
+     *
+     * @description Consulta reglas activas de tipo CPU o RAM y evalúa si los
+     *              valores actuales superan los umbrales configurados.
+     *
+     * @param int $tenantId ID del tenant
+     * @param array $metrics Métricas recibidas del agente
+     * @return void
      */
     private function checkServerAlerts(int $tenantId, array $metrics): void
     {
@@ -757,7 +736,15 @@ class AgentIngestController extends Controller
     }
 
     /**
-     * Evaluar condicion de alerta.
+     * Evalúa una condición de alerta contra un valor y umbral.
+     *
+     * @description Compara el valor actual con el umbral usando la condición
+     *              especificada (MAYOR, MENOR o IGUAL).
+     *
+     * @param float $value Valor actual a evaluar
+     * @param string $condition Condición de comparación (MAYOR, MENOR, IGUAL)
+     * @param float $threshold Umbral de comparación
+     * @return bool true si la condición se cumple, false de lo contrario
      */
     private function evaluateCondition(float $value, string $condition, float $threshold): bool
     {
@@ -770,7 +757,15 @@ class AgentIngestController extends Controller
     }
 
     /**
-     * Disparar alerta y registrar en historial.
+     * Dispara una alerta y la registra en el historial.
+     *
+     * @description Genera un mensaje descriptivo con el nombre de la regla, valor actual,
+     *              condición y umbral. Determina el nivel (CRITICAL si el valor supera
+     *              el umbral en un 50%, WARNING de lo contrario).
+     *
+     * @param array $rule Regla de alerta que se está disparando
+     * @param float $actualValue Valor actual que provocó la alerta
+     * @return void
      */
     private function triggerAlert(array $rule, float $actualValue): void
     {

@@ -7,15 +7,26 @@ use CallMetrics\Core\{Request, Response, TenantContext};
 use CallMetrics\Models\CallRecord;
 
 /**
- * Controlador para registros de llamadas (CDR).
- * Los endpoints de lectura requieren SUPERVISOR; stats y export también requieren SUPERVISOR.
+ * Clase CallRecordController
+ *
+ * Controlador para registros de llamadas (CDR). Los endpoints de lectura
+ * requieren SUPERVISOR; stats y export también requieren SUPERVISOR.
+ * Soporta paginación con filtros de fecha, estado y servidor PBX.
+ *
+ * @description Incluye exportación a CSV y estadísticas del día actual.
+ *              SUPER_ADMIN puede ver estadísticas globales sin filtro de tenant.
+ * @package CallMetrics\Http\Controllers
  */
 class CallRecordController extends Controller
 {
     /**
-     * GET /api/llamadas?page=0&size=10&fecha_inicio=&fecha_fin=&estado=&pbx_id=
-     *
      * Lista paginada de llamadas con filtros de fecha, estado y PBX.
+     *
+     * @description Retorna una página de llamadas CDR con filtros opcionales
+     *              por rango de fechas, estado de la llamada y servidor PBX.
+     *
+     * @param Request $request Solicitud con parámetros de query: page, size, fecha_inicio, fecha_fin, estado, pbx_id
+     * @return void Nunca retorna — termina con Response
      */
     public function index(Request $request): void
     {
@@ -37,9 +48,12 @@ class CallRecordController extends Controller
     }
 
     /**
-     * GET /api/llamadas/{id}
+     * Muestra el detalle de una llamada específica.
      *
-     * Detalle de una llamada específica.
+     * @description Retorna los datos completos de una llamada CDR por su ID.
+     *
+     * @param Request $request Solicitud con parámetro de ruta: id
+     * @return void Nunca retorna — termina con Response
      */
     public function show(Request $request): void
     {
@@ -54,9 +68,13 @@ class CallRecordController extends Controller
     }
 
     /**
-     * GET /api/llamadas/stats
+     * Obtiene estadísticas del día actual: total, contestadas, perdidas, duración promedio.
      *
-     * Estadísticas del día actual: total, contestadas, perdidas, duración promedio.
+     * @description Para SUPER_ADMIN retorna estadísticas globales (sin filtro de tenant).
+     *              Para otros roles retorna estadísticas filtradas por tenant.
+     *
+     * @param Request $request Solicitud actual
+     * @return void Nunca retorna — termina con Response
      */
     public function stats(Request $request): void
     {
@@ -77,9 +95,14 @@ class CallRecordController extends Controller
     }
 
     /**
-     * GET /api/llamadas/export?fecha_inicio=&fecha_fin=&estado=&pbx_id=
+     * Exporta llamadas a CSV.
      *
-     * Exportar llamadas a CSV. Agrega header Content-Type: text/csv.
+     * @description Obtiene todas las llamadas (sin paginación) con los filtros
+     *              aplicados y las exporta a un archivo CSV con encabezados
+     *              descriptivos. El archivo se descarga con nombre llamadas_YYYY-MM-DD.csv.
+     *
+     * @param Request $request Solicitud con parámetros de query: fecha_inicio, fecha_fin, estado, pbx_id
+     * @return void Nunca retorna — termina con descarga de archivo
      */
     public function export(Request $request): void
     {

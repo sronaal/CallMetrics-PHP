@@ -7,15 +7,26 @@ use CallMetrics\Core\{Request, Response, TenantContext};
 use CallMetrics\Models\Agent;
 
 /**
- * Controlador CRUD para agentes (operadores telefónicos).
- * Todos los endpoints requieren el rol ADMIN_TENANT.
+ * Clase AgentController
+ *
+ * Controlador CRUD para agentes (operadores telefónicos). Todos los endpoints
+ * requieren el rol ADMIN_TENANT. Gestiona la creación, actualización y
+ * activación/desactivación de agentes en las colas de atención.
+ *
+ * @description Soporta filtrado por cola, búsqueda por nombre y cambio de estado
+ *              entre DESCONECTADO y DISPONIBLE.
+ * @package CallMetrics\Http\Controllers
  */
 class AgentController extends Controller
 {
     /**
-     * GET /api/agentes?page=0&size=10&search=&cola_id=
-     *
      * Lista paginada de agentes, filtrable por cola.
+     *
+     * @description Retorna una página de agentes con búsqueda por nombre y
+     *              filtrado opcional por cola_id.
+     *
+     * @param Request $request Solicitud con parámetros de query: page, size, search, cola_id
+     * @return void Nunca retorna — termina con Response
      */
     public function index(Request $request): void
     {
@@ -38,9 +49,12 @@ class AgentController extends Controller
     }
 
     /**
-     * GET /api/agentes/{id}
+     * Muestra el detalle de un agente específico.
      *
-     * Detalle de un agente específico.
+     * @description Retorna los datos de un agente por su ID.
+     *
+     * @param Request $request Solicitud con parámetro de ruta: id
+     * @return void Nunca retorna — termina con Response
      */
     public function show(Request $request): void
     {
@@ -56,9 +70,13 @@ class AgentController extends Controller
     }
 
     /**
-     * POST /api/agentes
+     * Crea un nuevo agente.
      *
-     * Crear un nuevo agente. Requiere: nombre.
+     * @description Valida campo requerido (nombre), resuelve el tenant_id y crea
+     *              el agente con estado por defecto DESCONECTADO y estadísticas en 0.
+     *
+     * @param Request $request Solicitud con datos del agente en el body
+     * @return void Nunca retorna — termina con Response
      */
     public function store(Request $request): void
     {
@@ -93,9 +111,12 @@ class AgentController extends Controller
     }
 
     /**
-     * PUT /api/agentes/{id}
+     * Actualiza un agente existente.
      *
-     * Actualizar un agente existente.
+     * @description Solo actualiza los campos proporcionados (no vacíos ni null).
+     *
+     * @param Request $request Solicitud con parámetro de ruta: id y datos en el body
+     * @return void Nunca retorna — termina con Response
      */
     public function update(Request $request): void
     {
@@ -124,9 +145,13 @@ class AgentController extends Controller
     }
 
     /**
-     * PATCH /api/agentes/{id}/toggle
+     * Cambia el estado del agente (toggle DESCONECTADO ↔ DISPONIBLE).
      *
-     * Cambiar el estado del agente (DESCONECTADO ↔ DISPONIBLE).
+     * @description Alterna el estado del agente entre DESCONECTADO y DISPONIBLE.
+     *              Utilizado para conectar/desconectar agentes de las colas.
+     *
+     * @param Request $request Solicitud con parámetro de ruta: id
+     * @return void Nunca retorna — termina con Response
      */
     public function toggle(Request $request): void
     {

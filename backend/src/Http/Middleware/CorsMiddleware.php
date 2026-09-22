@@ -3,10 +3,28 @@ declare(strict_types=1);
 
 namespace CallMetrics\Http\Middleware;
 
+/**
+ * Clase CorsMiddleware
+ *
+ * Middleware para manejar Cross-Origin Resource Sharing (CORS). Establece los
+ * headers CORS necesarios para permitir solicitudes desde orígenes específicos
+ * y maneja las solicitudes preflight OPTIONS.
+ *
+ * @description Configura los headers CORS con una whitelist de orígenes permitidos.
+ *              Incluye soporte para credenciales, métodos HTTP y headers personalizados.
+ * @package CallMetrics\Http\Middleware
+ */
 class CorsMiddleware
 {
     /**
-     * Establecer headers CORS y manejar preflight OPTIONS.
+     * Establece headers CORS y maneja solicitudes preflight OPTIONS.
+     *
+     * @description Verifica el origen de la solicitud contra una whitelist de
+     *              orígenes permitidos. Si el origen está permitido, establece
+     *              los headers CORS correspondientes. Para solicitudes OPTIONS
+     *              (preflight), retorna 204 y termina la ejecución.
+     *
+     * @return void
      */
     public static function handle(): void
     {

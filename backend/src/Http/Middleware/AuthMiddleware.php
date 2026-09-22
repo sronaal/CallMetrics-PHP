@@ -6,16 +6,23 @@ namespace CallMetrics\Http\Middleware;
 use CallMetrics\Core\{JwtHelper, Response, TenantContext};
 
 /**
- * Middleware de autenticación JWT.
+ * Clase AuthMiddleware
  *
- * Extrae el token Bearer, lo decodifica, establece TenantContext,
+ * Middleware de autenticación JWT. Extrae el token Bearer del header Authorization,
+ * lo decodifica y valida, establece el TenantContext para la solicitud actual,
  * y opcionalmente aplica una verificación de jerarquía de roles.
  *
- * Jerarquía de roles: SUPER_ADMIN(4) > ADMIN_TENANT(3) > SUPERVISOR(2) > OPERADOR(1)
+ * @description Implementa la autenticación basada en JWT con soporte multi-tenant.
+ *              Jerarquía de roles: SUPER_ADMIN(4) > ADMIN_TENANT(3) > SUPERVISOR(2) > OPERADOR(1)
+ * @package CallMetrics\Http\Middleware
  */
 class AuthMiddleware
 {
-    /** Niveles de rol — mayor número = más privilegios. */
+    /**
+     * Niveles de rol — mayor número = más privilegios.
+     *
+     * @description Mapa de roles a sus niveles numéricos para comparación jerárquica.
+     */
     private const ROLE_HIERARCHY = [
         'SUPER_ADMIN'  => 4,
         'ADMIN_TENANT' => 3,
@@ -24,12 +31,16 @@ class AuthMiddleware
     ];
 
     /**
-     * Verificar que la solicitud porte un token de acceso válido.
+     * Verifica que la solicitud porte un token de acceso válido.
      *
-     * Cuando se proporciona $requiredRole, el rol del token debe ser >= ese nivel.
-     * Llama a Response::error + exit en cualquier fallo — nunca retorna.
+     * @description Extrae el token del header Authorization, lo decodifica usando
+     *              JwtHelper, valida que sea un token de acceso (no refresh),
+     *              establece TenantContext con los datos del JWT, y opcionalmente
+     *              verifica que el rol del usuario tenga los privilegios requeridos.
+     *              En caso de error, emite una respuesta JSON y termina la ejecución.
      *
-     * @param string|null $requiredRole  Rol mínimo requerido (ej. 'SUPERVISOR')
+     * @param string|null $requiredRole Rol mínimo requerido para acceder (ej. 'SUPERVISOR')
+     * @return void Nunca retorna — termina con Response::error en caso de fallo
      */
     public static function handle(?string $requiredRole = null): void
     {
@@ -76,7 +87,14 @@ class AuthMiddleware
     }
 
     /**
-     * Verificar si $userRole cumple o supera $requiredRole.
+     * Verifica si el rol del usuario cumple o supera el rol requerido.
+     *
+     * @description Compara los niveles numéricos de los roles utilizando ROLE_HIERARCHY.
+     *              El usuario tiene acceso si su nivel es mayor o igual al requerido.
+     *
+     * @param string $userRole Rol del usuario actual
+     * @param string $requiredRole Rol mínimo requerido
+     * @return bool true si el usuario tiene acceso, false de lo contrario
      */
     private static function roleHasAccess(string $userRole, string $requiredRole): bool
     {

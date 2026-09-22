@@ -1,7 +1,25 @@
-```
+# Dependencies
+node_modules/
+package-lock.json
+package.json
+
+# Environment
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+
 # Security-related documentation
 backend/sql/SECURITY_HARDENING.md
 
 # Bug fixes summary
 BUGFIXES_SUMMARY.md
-```

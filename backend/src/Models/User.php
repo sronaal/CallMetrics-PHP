@@ -6,17 +6,24 @@ namespace CallMetrics\Models;
 use CallMetrics\Core\Database;
 
 /**
- * Modelo de usuario para la tabla `usuarios`.
+ * Clase User
  *
- * Filtrado por tenant por defecto. Métodos clave:
- *   - findByEmail        — búsqueda global (sin filtro de tenant)
- *   - createWithPassword — hashing bcrypt (costo 12)
- *   - verifyPassword     — envoltorio de password_verify
- *   - seguimiento de intentos de login (conteo / registro / limpieza)
+ * Modelo de usuario para la tabla `usuarios`. Filtrado por tenant por defecto.
+ * Maneja autenticación, hashing de contraseñas, control de intentos de login
+ * y verificación de unicidad de email por tenant.
+ *
+ * @description Modelo con métodos especializados para autenticación y gestión
+ *              de usuarios. Soporta búsquedas globales (sin filtro de tenant)
+ *              para el flujo de login y búsquedas filtradas por tenant para
+ *              administración de usuarios.
+ * @package CallMetrics\Models
  */
 class User extends BaseModel
 {
+    /** @var string Nombre de la tabla en la base de datos */
     protected static string $table     = 'usuarios';
+
+    /** @var bool Filtrado por tenant habilitado por defecto */
     protected static bool   $tenantScoped = true;
 
     // ---------------------------------------------------------------
@@ -24,9 +31,14 @@ class User extends BaseModel
     // ---------------------------------------------------------------
 
     /**
-     * Buscar un usuario por email en TODOS los tenants.
+     * Busca un usuario por email en TODOS los tenants.
      *
-     * Se usa durante la autenticación (flujo de login).
+     * @description Búsqueda global sin filtro de tenant, utilizada durante el
+     *              flujo de autenticación (login). Permite encontrar usuarios
+     *              sin importar a qué tenant pertenezcan.
+     *
+     * @param string $email Correo electrónico del usuario a buscar
+     * @return ?array Datos del usuario como array asociativo o null si no existe
      */
     public static function findByEmail(string $email): ?array
     {
@@ -42,11 +54,15 @@ class User extends BaseModel
     // ---------------------------------------------------------------
 
     /**
-     * Crear un usuario, hasheando el campo 'password' con bcrypt (costo 12).
+     * Crea un usuario, hasheando el campo 'password' con bcrypt (costo 12).
      *
-     * Se espera que $data contenga al menos:
-     *   - password (texto plano, será hasheado)
-     *   - tenant_id, nombre, email, rol
+     * @description Recibe un array con los datos del usuario incluyendo 'password'
+     *              en texto plano. Convierte el password a un hash bcrypt y almacena
+     *              en 'password_hash'. Se espera que $data contenga al menos:
+     *              password, tenant_id, nombre, email, rol.
+     *
+     * @param array $data Datos del usuario a crear (incluye 'password' en texto plano)
+     * @return int ID del usuario creado
      */
     public static function createWithPassword(array $data): int
     {
@@ -63,7 +79,14 @@ class User extends BaseModel
     }
 
     /**
-     * Actualizar un usuario; hashea 'password' si se proporciona.
+     * Actualiza un usuario; hashea 'password' si se proporciona.
+     *
+     * @description Similar a createWithPassword pero para actualizaciones.
+     *              Si se proporciona 'password', lo hashea antes de actualizar.
+     *
+     * @param int $id ID del usuario a actualizar
+     * @param array $data Datos a actualizar (incluye 'password' opcional en texto plano)
+     * @return int Número de filas afectadas (0 o 1)
      */
     public static function updateWithPassword(int $id, array $data): int
     {
@@ -84,7 +107,14 @@ class User extends BaseModel
     // ---------------------------------------------------------------
 
     /**
-     * Verificar una contraseña en texto plano contra un hash bcrypt.
+     * Verifica una contraseña en texto plano contra un hash bcrypt.
+     *
+     * @description Utiliza password_verify() de PHP para comparar la contraseña
+     *              proporcionada con el hash almacenado en la base de datos.
+     *
+     * @param string $password Contraseña en texto plano a verificar
+     * @param string $hash Hash bcrypt almacenado en la base de datos
+     * @return bool true si la contraseña coincide, false de lo contrario
      */
     public static function verifyPassword(string $password, string $hash): bool
     {
@@ -96,10 +126,16 @@ class User extends BaseModel
     // ---------------------------------------------------------------
 
     /**
-     * Verificar si un email existe dentro de un tenant específico.
+     * Verifica si un email existe dentro de un tenant específico.
      *
-     * Se usa durante la creación/actualización de usuarios para garantizar
-     * la unicidad por tenant.
+     * @description Utilizado durante la creación/actualización de usuarios para
+     *              garantizar la unicidad de email por tenant. Opcionalmente
+     *              excluye un ID específico (útil al actualizar).
+     *
+     * @param string $email Correo electrónico a verificar
+     * @param int $tenantId ID del tenant donde buscar
+     * @param int|null $excludeId ID a excluir de la búsqueda (opcional)
+     * @return bool true si el email ya existe en el tenant, false de lo contrario
      */
     public static function emailExistsInTenant(string $email, int $tenantId, ?int $excludeId = null): bool
     {
@@ -121,7 +157,16 @@ class User extends BaseModel
     // ---------------------------------------------------------------
 
     /**
-     * Contar intentos de login para el email + IP dados dentro de la ventana de tiempo.
+     * Cuenta intentos de login para el email + IP dados dentro de la ventana de tiempo.
+     *
+     * @description Consulta la tabla login_attempts para contar cuántos intentos
+     *              fallidos ha habido desde una IP específica para un email dado,
+     *              dentro de la ventana de tiempo especificada.
+     *
+     * @param string $email Correo electrónico del usuario
+     * @param string $ip Dirección IP del intento
+     * @param int $windowMinutes Ventana de tiempo en minutos (por defecto 15)
+     * @return int Número de intentos en la ventana de tiempo
      */
     public static function countLoginAttempts(string $email, string $ip, int $windowMinutes = 15): int
     {
@@ -137,7 +182,14 @@ class User extends BaseModel
     }
 
     /**
-     * Registrar un intento de login.
+     * Registra un intento de login en la base de datos.
+     *
+     * @description Inserta un registro en la tabla login_attempts con el email,
+     *              dirección IP y timestamp actual. Utilizado para rate limiting.
+     *
+     * @param string $email Correo electrónico del usuario
+     * @param string $ip Dirección IP del intento
+     * @return void
      */
     public static function logLoginAttempt(string $email, string $ip): void
     {
@@ -148,7 +200,13 @@ class User extends BaseModel
     }
 
     /**
-     * Eliminar intentos de login más antiguos que el umbral dado.
+     * Elimina intentos de login más antiguos que el umbral dado.
+     *
+     * @description Limpia registros antiguos de la tabla login_attempts para
+     *              mantener la tabla optimizada. Útil para tareas de mantenimiento.
+     *
+     * @param int $olderThanMinutes Eliminar registros más antiguos que estos minutos (por defecto 60)
+     * @return void
      */
     public static function cleanOldAttempts(int $olderThanMinutes = 60): void
     {

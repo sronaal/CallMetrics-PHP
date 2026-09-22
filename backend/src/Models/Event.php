@@ -6,23 +6,39 @@ namespace CallMetrics\Models;
 use CallMetrics\Core\Database;
 
 /**
- * Modelo de eventos del sistema — filtrado por tenant.
- * Almacena eventos AMI, CEL, monitoreo de salud y del sistema.
+ * Clase Event
+ *
+ * Modelo de eventos del sistema — filtrado por tenant. Almacena eventos AMI
+ * (Asterisk Manager Interface), CEL (Channel Event Logging), monitoreo de
+ * salud y eventos del sistema.
+ *
+ * @description Modelo multi-tenant para gestión de eventos. Soporta filtros por
+ *              tipo de evento, nombre del evento, servidor PBX y rango de fechas.
+ * @package CallMetrics\Models
  */
 class Event extends BaseModel
 {
+    /** @var string Nombre de la tabla en la base de datos */
     protected static string $table = 'eventos';
+
+    /** @var bool Filtrado por tenant habilitado */
     protected static bool $tenantScoped = true;
 
     /**
      * Paginación filtrada por tipo, nombre de evento, PBX y rango de fechas.
      *
-     * @param string|null $tipo        Tipo de evento (AMI, CEL, HEALTH, SYSTEM)
-     * @param string|null $evento      Nombre del evento (búsqueda parcial)
-     * @param int|null    $pbxId       ID del servidor PBX
+     * @description Ejecuta una consulta paginada con múltiples filtros opcionales:
+     *              tipo de evento (AMI, CEL, HEALTH, SYSTEM), nombre del evento
+     *              (búsqueda parcial), servidor PBX y rango de fechas.
+     *
+     * @param int $page Número de página (0-indexed, por defecto 0)
+     * @param int $size Tamaño de página (por defecto 10)
+     * @param string|null $tipo Tipo de evento (AMI, CEL, HEALTH, SYSTEM)
+     * @param string|null $evento Nombre del evento (búsqueda parcial con LIKE)
+     * @param int|null $pbxId ID del servidor PBX
      * @param string|null $fechaInicio Fecha inicio en formato Y-m-d H:i:s
-     * @param string|null $fechaFin    Fecha fin en formato Y-m-d H:i:s
-     * @return array{data: array, total: int}
+     * @param string|null $fechaFin Fecha fin en formato Y-m-d H:i:s
+     * @return array{data: array, total: int} Datos de la página y total de registros
      */
     public static function paginateFiltered(
         int $page = 0,

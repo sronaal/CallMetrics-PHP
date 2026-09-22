@@ -17,6 +17,7 @@ return [
     ['GET',    '/api/tenants/{id}',          'TenantController@show',        true, 'SUPER_ADMIN'],
     ['POST',   '/api/tenants',               'TenantController@store',       true, 'SUPER_ADMIN'],
     ['PUT',    '/api/tenants/{id}',          'TenantController@update',      true, 'SUPER_ADMIN'],
+    ['DELETE', '/api/tenants/{id}',          'TenantController@delete',      true, 'SUPER_ADMIN'],
     ['PATCH',  '/api/tenants/{id}/toggle',   'TenantController@toggle',      true, 'SUPER_ADMIN'],
 
     // User routes
@@ -24,6 +25,7 @@ return [
     ['GET',    '/api/usuarios/{id}',         'UserController@show',          true],
     ['POST',   '/api/usuarios',              'UserController@store',         true, 'ADMIN_TENANT'],
     ['PUT',    '/api/usuarios/{id}',         'UserController@update',        true, 'ADMIN_TENANT'],
+    ['DELETE', '/api/usuarios/{id}',         'UserController@delete',        true, 'ADMIN_TENANT'],
     ['PATCH',  '/api/usuarios/{id}/toggle',  'UserController@toggle',        true, 'ADMIN_TENANT'],
 
     // Dashboard routes

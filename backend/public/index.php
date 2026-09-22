@@ -76,7 +76,7 @@ $request = \CallMetrics\Core\Request::fromGlobals();
 // - Headers CORS: Access-Control-Allow-Origin, Methods, Headers
 // - Preflight OPTIONS: Responde 200 sin llegar al router
 // - Whitelist de orígenes configurada en CorsMiddleware
-\CallsMetrics\Http\Middleware\CorsMiddleware::handle();
+\CallMetrics\Http\Middleware\CorsMiddleware::handle();
 
 // ═══════════════════════════════════════════════════════════════════
 // 6. DOCUMENTACIÓN ESTÁTICA — Swagger UI + OpenAPI Spec
